@@ -3,10 +3,11 @@
 Watches eBay for matching cards and posts a Discord notification when:
 - a **new listing** appears (price, link, grade + grading company),
 - a tracked listing's **price drops** (green "📉 price drop" alert showing old → new), and
-- an **ungraded listing is below market** (amber "🔥 below market" alert). Market
-  price is the median of **recent ungraded eBay sold prices** (real recent sales;
-  TCGplayer is Cloudflare-blocked and can't be scraped). Ungraded alerts also show
-  the market price and the listing's % vs market.
+- a **listing is below market** (amber "🔥 below market" alert). Market price is the
+  median of **recent eBay sold prices for that card in the same grade** (real recent
+  sales; TCGplayer is Cloudflare-blocked and can't be scraped) — a PSA 10 is compared
+  to recent PSA 10 sales, a raw to recent raws. Alerts show the market price and the
+  listing's % vs market.
 
 **Auction (bid) listings are excluded** by default — only fixed-price / Buy-It-Now
 listings are tracked (set `include_auctions: true`, or per-watch `allow_auctions`,
@@ -193,23 +194,73 @@ Add entries to the `watches` array in `config.json`:
   validation/health); `.github/workflows/tests.yml` runs it on every push.
 - **Scraper resilience** — bids, location, and price are read by text pattern with
   CSS-class fallbacks, so eBay's frequent layout renames are less likely to break it.
+- **Transient-error retries** — the HTTP session auto-retries connection resets,
+  read timeouts, and 5xx/429 responses with exponential backoff, so a brief network
+  blip no longer drops a query for the whole pass. (eBay's 403 / "Pardon Our
+  Interruption" soft-block is handled separately, with a cookie re-prime between tries.)
+- **Currency-aware pricing** — Canadian sellers on `ebay.com` show `C $` (CAD) and
+  other regions show `£`/`€`; the scraper detects the currency so a CAD/GBP/EUR
+  listing is never compared against the USD sold-median (which would fake "below
+  market" deals). The sold-median itself is computed from USD sales only.
+- **Grade-spelling tolerance** — `PSA-10`, `PSA10`, `BGS-9.5` (not just `PSA 10`)
+  all classify correctly instead of falling through to "graded (other)".
+- **Health-check debounce** — a single quiet pass where nothing matches no longer
+  trips a false ⚠️ alert; the "0 matched" alarm only fires after several consecutive
+  zero-match scans (`zero_match_alert_scans`, default 3). A true "0 scraped"
+  (scraper blocked / layout change) still alerts immediately.
+- **Log rotation** — `monitor.log` is capped (~2 MB); once it exceeds that it's
+  rotated to `monitor.log.1` on the next start, so it can't grow without bound.
+- **Market-price cache** — a real recent-sold median is cached ~6h, but a failed or
+  too-few-comps lookup (`None`) is *not* cached, so it's retried on the next scan
+  instead of leaving the card without a market price for hours.
 
 ## Market price & below-market deals
 
-For watches that track **ungraded** cards, the monitor estimates a market price from
-**recent eBay sold/completed listings** (real transactions) for that exact card:
-it takes the most-recent ungraded sales, trims outliers (damaged/junk lows and
-graded-slab highs), and uses the median. It's cached ~6h (`market_cache` in the DB).
+> ⚠️ **Sold comps are unavailable; deal detection now falls back to asking prices.**
+> eBay requires sign-in to view sold/completed listings — an unauthenticated request
+> returns a "Pardon Our Interruption" challenge or a sign-in wall, so no sold data
+> can be read (verified 2026-07-24; every cached market price in the live DB was
+> `null`). The monitor detects this, posts a one-time Discord notice, and trips a
+> circuit breaker that parks sold lookups for 24h — repeatedly retrying a blocked
+> endpoint was getting the whole session challenged, which would break the
+> active-listing scrape too.
+>
+> **Fallback: "typical asking (active)".** Deal detection now uses a low percentile
+> (default 25th) of *current asking prices* for the same card and grade, computed
+> from the listings each scan already fetches — **zero extra requests, no account
+> credentials**. This is a weaker signal than real sales (sellers list optimistically),
+> so it demands a wider gap (`below_ask_pct`, default 10% vs 5% for sold) and every
+> alert is labelled **"below asking"** with a **Typical asking (active)** field — never
+> presented as a real market price. If sold data ever becomes readable again, sold
+> automatically takes precedence and the labels switch back to "market".
 
-- Every ungraded alert shows **Market (recent sold)** and the listing's **% vs market**.
+The monitor estimates a market price **per grade bucket** from **recent eBay
+sold/completed listings** (real transactions) for that exact card: for each grade
+a watch tracks it takes the most-recent sales *in that same grade*, trims outliers
+(damaged/junk lows and mislabeled highs), and uses the median. A PSA 10 listing is
+therefore compared only against recent PSA 10 sales, a raw against recent raws, and
+so on. Each bucket is cached ~6h in the DB (`market:<watch>:<grade>`), and a watch's
+sold listings are fetched at most once per refresh (shared across its buckets).
+
+- Priced buckets: **ungraded, PSA 10, BGS 10, BGS 9.5**. `other_graded` (a mix of
+  companies/grades) is never priced — a single median across it would be meaningless.
+- Every alert with a market price shows **Market (recent sold)** and the listing's **% vs market**.
 - A listing priced between `below_market_floor` (default **0.5×** market — anything
   cheaper is treated as damaged/mislabeled junk, not a deal) and
   `1 − below_market_pct` (default **5%** below) is flagged a **🔥 below-market deal**.
 - New below-market listings are flagged inline; an already-seen listing that *crosses*
   below market fires a distinct 🔥 alert (tracked so it never repeats).
-- Graded slabs (PSA 10 etc.) get no market price — raw-card sold data doesn't apply.
+- A bucket with too few recent sold comps simply gets no market price (no false deals).
 
 Tune in `config.json`: `below_market_pct`, `below_market_floor` (both per-watch overridable).
+
+**Asking-price fallback settings** (used while sold data is gated):
+- `ask_percentile` (default `25`) — which percentile of active asking prices is the
+  reference. Lower = stricter (fewer, better deals).
+- `ask_min_listings` (default `8`) — minimum comparable active listings in a grade
+  bucket before a reference is computed at all, so a thin market can't fake a "deal".
+- `below_ask_pct` (default `10`, per-watch overridable) — how far under the asking
+  reference a listing must be. Wider than the sold threshold because asks are noisier.
 
 ## Price-drop alerts
 

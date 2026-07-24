@@ -28,11 +28,20 @@ from urllib.parse import urlencode
 
 import requests
 from bs4 import BeautifulSoup
+from requests.adapters import HTTPAdapter
+
+try:
+    from urllib3.util.retry import Retry
+except Exception:  # very old urllib3 layout
+    from requests.packages.urllib3.util.retry import Retry
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(HERE, "config.json")
 DB_PATH = os.path.join(HERE, "seen.db")
 LOG_PATH = os.path.join(HERE, "monitor.log")
+
+# Keep the log from growing without bound: rotate to monitor.log.1 past this size.
+LOG_MAX_BYTES = 2 * 1024 * 1024
 
 
 class _Tee:
@@ -67,8 +76,23 @@ class _Tee:
                 pass
 
 
+def _rotate_log_if_large():
+    """Single-generation rotation: if monitor.log exceeds LOG_MAX_BYTES, move it
+    aside to monitor.log.1 (replacing any previous one) so the active file resets."""
+    try:
+        if os.path.getsize(LOG_PATH) < LOG_MAX_BYTES:
+            return
+    except OSError:
+        return  # file doesn't exist yet — nothing to rotate
+    try:
+        os.replace(LOG_PATH, LOG_PATH + ".1")
+    except OSError as e:
+        print(f"log rotation warning: {e}", file=sys.stderr)
+
+
 def enable_file_logging():
     try:
+        _rotate_log_if_large()
         f = open(LOG_PATH, "a", encoding="utf-8")
         sys.stdout = _Tee(sys.stdout, f)
         sys.stderr = _Tee(sys.stderr, f)
@@ -91,11 +115,32 @@ HEADERS = {
 _SESSION = None
 
 
+def _build_session():
+    """A requests.Session that auto-retries transient network failures (connection
+    resets, read timeouts, 5xx, and 429) with exponential backoff. eBay's 403 /
+    'Pardon Our Interruption' soft-block is deliberately NOT retried here — that's
+    handled in fetch_listings, which must re-prime cookies between attempts."""
+    session = requests.Session()
+    session.headers.update(HEADERS)
+    retry = Retry(
+        total=3,
+        connect=3,
+        read=3,
+        backoff_factor=1.0,                 # 0s, 1s, 2s between retries
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset(["GET"]),
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+
 def get_session(domain: str):
     global _SESSION
     if _SESSION is None:
-        _SESSION = requests.Session()
-        _SESSION.headers.update(HEADERS)
+        _SESSION = _build_session()
         prime_session(domain)
     return _SESSION
 
@@ -116,9 +161,12 @@ GRADING_COMPANIES = [
 ]
 
 # Buckets we can detect. Order matters: check specific grades first.
-_PSA10 = re.compile(r"\bPSA\s*10\b")
-_BGS95 = re.compile(r"\b(?:BGS|BECKETT)\s*9\.5\b")
-_BGS10 = re.compile(r"\b(?:BGS|BECKETT)\s*10\b")
+# The separator class allows the common "PSA-10" / "BGS-9.5" / "PSA10" spellings
+# (not just "PSA 10"), which would otherwise fall through to other_graded.
+_SEP = r"[\s\-.]*"
+_PSA10 = re.compile(r"\bPSA" + _SEP + r"10\b")
+_BGS95 = re.compile(r"\b(?:BGS|BECKETT)" + _SEP + r"9\.5\b")
+_BGS10 = re.compile(r"\b(?:BGS|BECKETT)" + _SEP + r"10\b")
 # "is this graded at all?" — an unambiguous company token anywhere in the title.
 _GRADED_HINT = re.compile(
     r"\b(?:" + "|".join(GRADING_COMPANIES) + r")\b", re.IGNORECASE
@@ -371,19 +419,52 @@ def _parse_sold_date(li_text):
     if not mo:
         return None
     day = int(mt.group(2))
-    year = int(mt.group(3)) if mt.group(3) else datetime.now(timezone.utc).year
+    if mt.group(3):
+        year = int(mt.group(3))
+    else:
+        # eBay omits the year for recent sales. Default to this year, but if that
+        # lands in the future (e.g. "Sold Dec 30" seen in January), it's last year.
+        now = datetime.now(timezone.utc)
+        year = now.year
+        try:
+            if datetime(year, mo, day, tzinfo=timezone.utc) > now + timedelta(days=2):
+                year -= 1
+        except ValueError:
+            pass
     try:
         return f"{year:04d}-{mo:02d}-{day:02d}"
     except Exception:
         return None
 
 
+# eBay.com shows most prices in USD, but Canadian sellers render as "C $12.00" and
+# other regions in their own currency. We must NOT treat "C $80" (CAD) as 80 USD
+# when comparing to a USD sold-median — that manufactures fake "below market" deals.
+# Order matters: the more specific "C $" / "AU $" are tested before a bare "$".
+_CURRENCY_PATTERNS = [
+    ("CAD", re.compile(r"\bC\s*\$|\bCA\s*\$|\bCAD\b", re.IGNORECASE)),
+    ("AUD", re.compile(r"\bAU\s*\$|\bAUD\b", re.IGNORECASE)),
+    ("GBP", re.compile(r"£|\bGBP\b")),
+    ("EUR", re.compile(r"€|\bEUR\b")),
+    ("USD", re.compile(r"\bUS\s*\$|\bUSD\b|\$")),
+]
+
+
+def detect_currency(text: str):
+    """Best-effort ISO currency code for a price string, or None if no marker."""
+    for code, pat in _CURRENCY_PATTERNS:
+        if pat.search(text or ""):
+            return code
+    return None
+
+
 def parse_price(text: str):
-    """Return (display_string, low_float_or_None)."""
+    """Return (display_string, low_float_or_None, currency_or_None)."""
     text = " ".join(text.split())
+    currency = detect_currency(text)
     m = re.search(r"[\d,]+\.?\d*", text.replace("$", ""))
     low = float(m.group(0).replace(",", "")) if m else None
-    return text, low
+    return text, low, currency
 
 
 def _fmt_price(v):
@@ -451,11 +532,12 @@ def fetch_listings(domain: str, query: str, max_attempts: int = 4, sold: bool = 
 
         price_el = li.select_one(".s-item__price") or li.select_one(".s-card__price")
         if price_el:
-            price_str, price_low = parse_price(price_el.get_text(" ", strip=True))
+            price_str, price_low, currency = parse_price(price_el.get_text(" ", strip=True))
         else:
-            # fallback: first $-amount in the card text — survives price-class renames.
-            fm = re.search(r"\$[\d,]+(?:\.\d{2})?", li_text)
-            price_str, price_low = parse_price(fm.group(0)) if fm else ("N/A", None)
+            # fallback: first amount in the card text — survives price-class renames.
+            # Keep any leading currency marker (C $, US $, £, €) so it's classified.
+            fm = re.search(r"(?:C\s*|US\s*|AU\s*)?[$£€][\d,]+(?:\.\d{2})?", li_text)
+            price_str, price_low, currency = parse_price(fm.group(0)) if fm else ("N/A", None, None)
 
         img_el = li.select_one("img")
         image = None
@@ -493,6 +575,7 @@ def fetch_listings(domain: str, query: str, max_attempts: int = 4, sold: bool = 
             "title": title,
             "price_str": price_str,
             "price_low": price_low,
+            "currency": currency,
             "url": f"https://{domain}/itm/{item_id}",
             "image": image,
             "condition": condition,
@@ -535,13 +618,18 @@ def _median(values):
     return vals[mid] if n % 2 else (vals[mid - 1] + vals[mid]) / 2
 
 
-def compute_market_price(domain, watch, recent_n=15, min_sales=3):
-    """Median price of the most-recent UNGRADED sales for the card, or None.
+# Grade buckets we can put a market price on. Each is a homogeneous, comparable
+# sold population, so a median means something. 'other_graded' is deliberately
+# excluded — it mixes companies and grades (PSA 9, CGC 10, SGC 8, …), so a single
+# median across it would be meaningless.
+MARKET_GRADES = ("ungraded", "psa10", "bgs10", "bgs9.5")
 
-    Uses eBay completed/sold listings (real recent transactions) filtered by the
-    watch's own require/lot/language rules and restricted to ungraded/raw sales.
-    Rejects outliers (damaged/wrong-condition junk lows and graded-slab highs) by
-    keeping only sales within [0.4x, 2.5x] of the rough median before averaging.
+
+def fetch_sold_sales(domain, watch):
+    """Real recent sold/completed sales for the card, as (sold_date, price, grade).
+
+    Fetched once per watch and filtered by the watch's own require/lot/language
+    rules; the grade bucket is attached so callers can price each bucket separately.
     """
     require = watch.get("require", [])
     exclude = watch.get("exclude", [])
@@ -552,19 +640,31 @@ def compute_market_price(domain, watch, recent_n=15, min_sales=3):
     for x in fetch_all(domain, watch, sold=True):
         if x["price_low"] is None or not x.get("sold_date"):
             continue
+        # Keep the median in one currency: USD (or an unmarked price, which on
+        # ebay.com is USD). A CAD/GBP/EUR sale would skew the USD comparison.
+        if x.get("currency") not in (None, "USD"):
+            continue
         if is_lot(x["title"]) and not allow_lots:
             continue
         if not matches_filters(x["title"], require, exclude, match_any):
             continue
-        if classify_grade(x["title"]) != "ungraded":
-            continue
         if not passes_language(x["title"], lang):
             continue
-        sales.append((x["sold_date"], x["price_low"]))
-    if len(sales) < min_sales:
+        sales.append((x["sold_date"], x["price_low"], classify_grade(x["title"])))
+    return sales
+
+
+def median_recent_price(sales, grade, recent_n=15, min_sales=3):
+    """Trimmed median of the most-recent sales in one grade bucket, or None.
+
+    Rejects outliers (damaged/wrong-condition junk lows and mislabeled highs) by
+    keeping only sales within [0.4x, 2.5x] of the rough median before averaging.
+    """
+    rows = [(d, p) for (d, p, g) in sales if g == grade]
+    if len(rows) < min_sales:
         return None
-    sales.sort(reverse=True)                      # most-recent sold first
-    recent = [p for _, p in sales[:recent_n]]
+    rows.sort(reverse=True)                       # most-recent sold first
+    recent = [p for _, p in rows[:recent_n]]
     rough = _median(recent)
     core = [p for p in recent if rough and 0.4 * rough <= p <= 2.5 * rough]
     if len(core) < min_sales:
@@ -572,26 +672,160 @@ def compute_market_price(domain, watch, recent_n=15, min_sales=3):
     return round(_median(core), 2)
 
 
-def get_market_price(conn, domain, watch, cache_hours=6, allow_write=True):
-    """Cached market price (in meta table) so we don't refetch sales every scan."""
-    key = "market:" + watch["name"]
-    now = datetime.now(timezone.utc)
-    raw = meta_get(conn, key)
-    if raw:
+def compute_market_price(domain, watch, grade="ungraded", recent_n=15, min_sales=3):
+    """Recent-sold median for a single grade bucket (default ungraded), or None."""
+    sales = fetch_sold_sales(domain, watch)
+    return median_recent_price(sales, grade, recent_n, min_sales)
+
+
+def _percentile(values, pct):
+    """Linear-interpolated percentile of `values` (pct is 0-100), or None if empty."""
+    vals = sorted(values)
+    if not vals:
+        return None
+    if len(vals) == 1:
+        return vals[0]
+    k = (len(vals) - 1) * (pct / 100.0)
+    lo = int(k)
+    hi = min(lo + 1, len(vals) - 1)
+    if lo == hi:
+        return vals[lo]
+    return vals[lo] + (vals[hi] - vals[lo]) * (k - lo)
+
+
+def active_asking_reference(listings, watch, wanted, pct=25, min_listings=8):
+    """Per-grade reference price from the ACTIVE listings we already scraped.
+
+    Sold comps are gated behind eBay sign-in, so this is the fallback signal. It
+    costs zero extra requests — it reuses the listings this scan already fetched.
+
+    Asking prices skew optimistic (sellers list high and sit), so the reference is
+    a LOW percentile (default 25th) rather than the median: a listing has to be
+    cheaper than most of what's currently listed to look like a deal. Auctions are
+    excluded, since a mid-auction bid isn't an asking price and would drag it down.
+    """
+    require = watch.get("require", [])
+    exclude = watch.get("exclude", [])
+    match_any = watch.get("match_any")
+    lang = watch.get("language", "english")
+    allow_lots = watch.get("allow_lots", False)
+    buckets = {}
+    for x in listings:
+        if x.get("price_low") is None:
+            continue
+        if x.get("currency") not in (None, "USD"):
+            continue                                  # keep the reference single-currency
+        if is_auction(x):
+            continue
+        if is_lot(x["title"]) and not allow_lots:
+            continue
+        if not matches_filters(x["title"], require, exclude, match_any):
+            continue
+        if not passes_language(x["title"], lang):
+            continue
+        g = classify_grade(x["title"])
+        if g not in MARKET_GRADES or g not in wanted:
+            continue
+        buckets.setdefault(g, []).append(x["price_low"])
+    out = {}
+    for g, vals in buckets.items():
+        if len(vals) >= min_listings:                 # too few asks -> no reference
+            out[g] = round(_percentile(vals, pct), 2)
+    return out
+
+
+# eBay requires sign-in for sold/completed searches, so an unauthenticated sold
+# fetch usually comes back as a challenge/sign-in page with 0 listings. Retrying
+# that every scan is not just wasted work — hammering it gets the whole session
+# challenged, which would break the *active* listing scrape that does work. So
+# repeated failures trip a circuit breaker that parks sold fetching for a while.
+MARKET_FAIL_THRESHOLD = 3          # consecutive failed rounds before opening
+MARKET_COOLDOWN_HOURS = 24         # how long to stop trying once open
+MARKET_NONE_CACHE_HOURS = 1        # re-check an unpriceable bucket hourly, not every scan
+
+
+def _market_circuit_open(conn, now):
+    """(is_open, state_dict) — True while the sold-fetch cooldown is still active."""
+    try:
+        state = json.loads(meta_get(conn, "market_circuit", "") or "{}")
+    except Exception:
+        state = {}
+    until = state.get("until")
+    if until:
         try:
-            data = json.loads(raw)
-            if (now - datetime.fromisoformat(data["ts"])).total_seconds() < cache_hours * 3600:
-                return data["price"]
+            if now < datetime.fromisoformat(until):
+                return True, state
         except Exception:
             pass
-    try:
-        price = compute_market_price(domain, watch)
-    except Exception as e:
-        print(f"[{watch.get('name','?')}] market price error: {e}", file=sys.stderr)
-        return None
-    if allow_write:
-        meta_set(conn, key, json.dumps({"price": price, "ts": now.isoformat()}))
-    return price
+    return False, state
+
+
+def _market_record_result(conn, state, ok, now):
+    """Track consecutive sold-fetch failures; open the breaker past the threshold."""
+    if ok:
+        meta_set(conn, "market_circuit", json.dumps({"fails": 0, "until": None}))
+        return
+    fails = int(state.get("fails", 0)) + 1
+    until = None
+    if fails >= MARKET_FAIL_THRESHOLD:
+        until = (now + timedelta(hours=MARKET_COOLDOWN_HOURS)).isoformat()
+        print(f"market pricing unavailable ({fails} consecutive failed sold fetches) — "
+              f"pausing sold lookups for {MARKET_COOLDOWN_HOURS}h. Below-market alerts "
+              "are disabled until this recovers.", file=sys.stderr)
+    meta_set(conn, "market_circuit", json.dumps({"fails": fails, "until": until}))
+
+
+def get_market_prices(conn, domain, watch, grades, cache_hours=6, allow_write=True):
+    """Cached recent-sold median price per grade bucket -> {grade: price_or_None}.
+
+    Only the priceable buckets in `grades` (MARKET_GRADES) are computed. Results
+    are cached ~cache_hours in the meta table under 'market:<watch>:<grade>'; the
+    watch's sold listings are fetched at most once per call (shared across every
+    bucket that needs refreshing). An unpriceable bucket is negative-cached for a
+    shorter window so it retries periodically rather than on every single scan.
+    """
+    name = watch["name"]
+    priceable = [g for g in grades if g in MARKET_GRADES]
+    now = datetime.now(timezone.utc)
+    out = {}
+    missing = []
+    for g in priceable:
+        raw = meta_get(conn, f"market:{name}:{g}")
+        if raw:
+            try:
+                data = json.loads(raw)
+                age = (now - datetime.fromisoformat(data["ts"])).total_seconds()
+                ttl = cache_hours if data.get("price") is not None else MARKET_NONE_CACHE_HOURS
+                if age < ttl * 3600:
+                    out[g] = data["price"]
+                    continue
+            except Exception:
+                pass
+        missing.append(g)
+
+    if missing:
+        is_open, state = _market_circuit_open(conn, now)
+        if is_open:
+            # Sold lookups are parked — don't touch eBay, just report "no market".
+            for g in missing:
+                out[g] = None
+            return out
+        try:
+            sales = fetch_sold_sales(domain, watch)   # one fetch for all buckets
+        except Exception as e:
+            print(f"[{name}] market price error: {e}", file=sys.stderr)
+            sales = None
+        # An empty result means the sold page was a challenge/sign-in wall (or the
+        # card genuinely has no comps) — either way it's a failed round.
+        if allow_write:
+            _market_record_result(conn, state, bool(sales), now)
+        for g in missing:
+            price = median_recent_price(sales, g) if sales else None
+            out[g] = price
+            if allow_write:
+                meta_set(conn, f"market:{name}:{g}",
+                         json.dumps({"price": price, "ts": now.isoformat()}))
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -712,8 +946,13 @@ def _listing_type(listing):
 
 
 def send_discord(webhook_url, watch_name, listing, grade,
-                 event="new", old_price_str=None, drop_pct=None, market_price=None):
+                 event="new", old_price_str=None, drop_pct=None, market_price=None,
+                 market_kind="sold"):
     label = GRADE_LABELS.get(grade, grade)
+    # Be explicit about what the comparison is against: real recent sales, or just
+    # what comparable listings are currently ASKING (a weaker signal).
+    ref_word = "market" if market_kind == "sold" else "asking"
+    ref_field = "Market (recent sold)" if market_kind == "sold" else "Typical asking (active)"
     emoji = GRADE_EMOJI.get(grade, "•")
     company = GRADE_COMPANY.get(grade, "—")
     price = listing.get("price_str") or "N/A"
@@ -721,16 +960,18 @@ def send_discord(webhook_url, watch_name, listing, grade,
     shipping = listing.get("shipping")
     cur_low = listing.get("price_low")
 
-    # Market comparison (ungraded only; market_price is the recent-sold median).
+    # Price comparison (market_price is this listing's grade reference — a recent-sold
+    # median when available, otherwise a low percentile of active asking prices).
     vs_pct = round((cur_low - market_price) / market_price * 100) if (market_price and cur_low is not None) else None
     below = bool(market_price and cur_low is not None and cur_low < market_price)
 
     if event == "below_market":
         color = 0xF39C12  # amber "deal"
-        author = f"🔥  Below market · {watch_name}"
-        foot = "eBay · below market"
+        author = f"🔥  Below {ref_word} · {watch_name}"
+        foot = f"eBay · below {ref_word}"
         content = (f"🔥 **{watch_name}** — {price}"
-                   + (f" · {abs(vs_pct)}% below market" if vs_pct is not None else " · below market"))
+                   + (f" · {abs(vs_pct)}% below {ref_word}" if vs_pct is not None
+                      else f" · below {ref_word}"))
         headline = f"## {price}" + (f"  ·  _{shipping}_" if shipping else "") + "\n" if price != "N/A" else ""
     elif event == "drop":
         color = 0x2E7D32
@@ -745,14 +986,14 @@ def send_discord(webhook_url, watch_name, listing, grade,
         author = f"🆕  {watch_name}"
         foot = "eBay · newly listed"
         content = (f"{emoji} **{watch_name}** — {label} · {price}"
-                   + (" · 🔥 below market" if below else ""))
+                   + (f" · 🔥 below {ref_word}" if below else ""))
         price_bit = f"## {price}" + (f"  ·  _{shipping}_" if shipping else "")
         headline = f"{price_bit}\n" if price != "N/A" else ""
 
     deal_line = ""
     if below:
-        deal_line = (f"🔥 **{abs(vs_pct)}% below market**\n" if vs_pct is not None
-                     else "🔥 **below market**\n")
+        deal_line = (f"🔥 **{abs(vs_pct)}% below {ref_word}**\n" if vs_pct is not None
+                     else f"🔥 **below {ref_word}**\n")
 
     description = (
         f"{headline}"
@@ -772,7 +1013,7 @@ def send_discord(webhook_url, watch_name, listing, grade,
         fields.append({"name": "Location", "value": f"📍 {listing['location'][:78]}", "inline": True})
     if market_price:
         mv = f"${market_price:,.0f}" + (f"  ({vs_pct:+d}%)" if vs_pct is not None else "")
-        fields.append({"name": "Market (recent sold)", "value": mv, "inline": True})
+        fields.append({"name": ref_field, "value": mv, "inline": True})
 
     embed = {
         "author": {"name": author},
@@ -829,11 +1070,25 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
     # market (those are damaged/base/mislabeled junk, not real deals).
     cfg_below_pct = float(cfg.get("below_market_pct", 5))
     cfg_below_floor = float(cfg.get("below_market_floor", 0.5))
+    # Asking-price fallback (used when sold comps are unavailable). Asks skew high,
+    # so we reference a low percentile of active listings and demand a wider gap
+    # than we would against real sold prices before calling something a deal.
+    cfg_ask_pct = float(cfg.get("ask_percentile", 25))
+    cfg_ask_min = int(cfg.get("ask_min_listings", 8))
+    cfg_below_ask_pct = float(cfg.get("below_ask_pct", 10))
     # Only alert for listings located in these regions (default US + Canada).
     cfg_regions = {canon_region(x) for x in cfg.get("allowed_regions", ["US", "CA"])}
     cfg_regions.discard(None)
     cfg_allow_unknown_region = bool(cfg.get("allow_unknown_region", False))
     prune_days = int(cfg.get("prune_days", 30))
+    # One-time migration: every existing row was stored with below_alerted=0 back when
+    # no price reference existed. The moment a reference becomes available, hundreds of
+    # already-seen listings would cross "below" at once and flood Discord. On the first
+    # such scan we baseline those flags silently instead of alerting.
+    ask_baseline = (not dry_run) and (not reseed) and meta_get(conn, "ask_baseline_done") != "1"
+    if ask_baseline:
+        print(f"[{ts}] first scan with a price reference — baselining below-flags silently "
+              "(no below-market alerts this pass).")
     total_scraped = 0
     total_matched = 0
 
@@ -876,11 +1131,21 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         allow_unknown_region = bool(watch.get("allow_unknown_region", cfg_allow_unknown_region))
         below_pct = float(watch.get("below_market_pct", cfg_below_pct))
         below_floor = float(watch.get("below_market_floor", cfg_below_floor))
-        # Recent-sold market price (ungraded), cached ~6h in the meta table; only
-        # computed for watches that actually track ungraded cards.
-        market_price = None
-        if "ungraded" in wanted:
-            market_price = get_market_price(conn, domain, watch, allow_write=not dry_run)
+        below_ask_pct = float(watch.get("below_ask_pct", cfg_below_ask_pct))
+        # Price reference per grade bucket, best source first:
+        #   1. recent SOLD comps (real transactions) — currently gated by eBay sign-in
+        #   2. active ASKING prices from the listings this scan already pulled
+        # Sold wins when available; asking is the fallback and is labelled as such
+        # everywhere (alerts say "below asking", not "below market").
+        market_prices = get_market_prices(conn, domain, watch, wanted, allow_write=not dry_run)
+        asking_ref = active_asking_reference(listings, watch, wanted,
+                                             pct=cfg_ask_pct, min_listings=cfg_ask_min)
+        refs = {}
+        for g in wanted:
+            if market_prices.get(g) is not None:
+                refs[g] = (market_prices[g], "sold")
+            elif asking_ref.get(g) is not None:
+                refs[g] = (asking_ref[g], "ask")
         to_seed = []          # brand-new items to bulk-insert
         price_updates = []    # (price, price_str, item_id) baselines / post-drop
         refresh_ids = []      # seen items observed this scan (refresh last_seen)
@@ -908,9 +1173,16 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
             item_id = lst["item_id"]
             cur = lst["price_low"]
             cur_str = lst["price_str"]
-            mkt = market_price if grade == "ungraded" else None
+            mkt, mkt_kind = refs.get(grade, (None, "sold"))
+            # The reference is USD. Don't compare a CAD/GBP/EUR-priced listing
+            # against it (that fabricates fake deals and wrong % vs market) — drop
+            # the market context for non-USD listings; they still alert as new.
+            if mkt is not None and lst.get("currency") not in (None, "USD"):
+                mkt = None
+            # Asking-based references need a wider gap than real sold comps.
+            eff_below_pct = below_pct if mkt_kind == "sold" else below_ask_pct
             below = bool(mkt and cur is not None
-                         and mkt * below_floor <= cur < mkt * (1 - below_pct / 100))
+                         and mkt * below_floor <= cur < mkt * (1 - eff_below_pct / 100))
 
             # ---- already-seen listing: watch for a price drop / below-market ----
             if item_id in seen_prices:
@@ -942,11 +1214,14 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                     else:
                         try:
                             send_discord(webhook, name, lst, grade, event="drop",
-                                         old_price_str=old_str, drop_pct=pct, market_price=mkt)
-                            print(f"[{ts}] [{name}] price drop: {old_str} -> {cur_str} ({pct}%) {lst['url']}")
+                                         old_price_str=old_str, drop_pct=pct, market_price=mkt,
+                                         market_kind=mkt_kind)
                         except Exception as e:
                             print(f"[{ts}] [{name}] discord error: {e}", file=sys.stderr)
                             continue  # keep old ref; retry next pass
+                        # Print AFTER the try: a logging/console-encoding error here
+                        # must not look like a send failure and undo a delivered alert.
+                        print(f"[{ts}] [{name}] price drop: {old_str} -> {cur_str} ({pct}%) {lst['url']}")
                     conn.execute("UPDATE seen SET price=?, price_str=?, last_seen=?, below_alerted=? "
                                  "WHERE watch=? AND item_id=?",
                                  (cur, cur_str, today, 1 if below else 0, name, item_id))
@@ -957,15 +1232,24 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                     continue
                 # (2) newly below market (no drop this pass)?
                 if below and not ref_below:
+                    if ask_baseline:
+                        # First scan with a reference available — record the state,
+                        # don't alert. Genuine future crossings still fire normally.
+                        conn.execute("UPDATE seen SET below_alerted=1, last_seen=? "
+                                     "WHERE watch=? AND item_id=?", (today, name, item_id))
+                        conn.commit()
+                        seen_prices[item_id] = (ref_price, ref_str, 1)
+                        continue
                     if not webhook or webhook.startswith("PASTE_"):
                         print(f"[{ts}] [{name}] BELOW MARKET {cur_str} vs ${mkt:,.0f} {lst['url']} (no webhook)")
                     else:
                         try:
-                            send_discord(webhook, name, lst, grade, event="below_market", market_price=mkt)
-                            print(f"[{ts}] [{name}] below market: {cur_str} vs ${mkt:,.0f} {lst['url']}")
+                            send_discord(webhook, name, lst, grade, event="below_market",
+                                         market_price=mkt, market_kind=mkt_kind)
                         except Exception as e:
                             print(f"[{ts}] [{name}] discord error: {e}", file=sys.stderr)
                             continue
+                        print(f"[{ts}] [{name}] below market: {cur_str} vs ${mkt:,.0f} {lst['url']}")
                     conn.execute("UPDATE seen SET below_alerted=1, last_seen=? WHERE watch=? AND item_id=?",
                                  (today, name, item_id))
                     conn.commit()
@@ -994,13 +1278,13 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                       f"{' BELOW-MKT' if below else ''} {lst['url']} (no webhook configured — not sent)")
             else:
                 try:
-                    send_discord(webhook, name, lst, grade, market_price=mkt)
-                    print(f"[{ts}] [{name}] notified: {GRADE_LABELS[grade]} {cur_str}"
-                          f"{' 🔥below-market' if below else ''} {lst['url']}")
+                    send_discord(webhook, name, lst, grade, market_price=mkt, market_kind=mkt_kind)
                 except Exception as e:
                     print(f"[{ts}] [{name}] discord error: {e}", file=sys.stderr)
                     seen_prices.pop(item_id, None)  # don't mark seen so we retry next pass
                     continue
+                print(f"[{ts}] [{name}] notified: {GRADE_LABELS[grade]} {cur_str}"
+                      f"{' 🔥below-market' if below else ''} {lst['url']}")
             mark_seen(conn, name, item_id, grade, cur, cur_str, below_alerted=1 if below else 0)
             new_count += 1
             time.sleep(0.4)  # be gentle with the webhook
@@ -1027,29 +1311,74 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         if seeding:
             print(f"[{ts}] [{name}] first run: seeded {len(to_seed)} existing matched listing(s) as seen (no alerts).")
         else:
-            mtxt = f", mkt ${market_price:,.0f}" if market_price else ""
+            priced = [f"{g} ${p:,.0f}({k})" for g in MARKET_GRADES
+                      for (p, k) in [refs.get(g, (None, None))] if p]
+            mtxt = f", ref {', '.join(priced)}" if priced else ""
             print(f"[{ts}] [{name}] {len(listings)} scraped, {matched} matched, "
                   f"{new_count} new, {drop_count} drop(s), {below_count} below-market{mtxt}.")
         total_matched += matched
 
     # --- after all watches: prune stale rows + health check on the whole scan ---
+    if ask_baseline:
+        meta_set(conn, "ask_baseline_done", "1")
+
     if not dry_run:
         pruned = prune_seen(conn, prune_days)
         if pruned:
             print(f"[{ts}] pruned {pruned} stale seen row(s) not seen in > {prune_days}d.")
 
+    # Below-market alerts depend on sold-listing data. If that's parked, say so once
+    # rather than letting the feature look like it's working while silently off.
+    if not dry_run and not reseed:
+        mkt_open, _state = _market_circuit_open(conn, datetime.now(timezone.utc))
+        notice = meta_get(conn, "market_notice", "")
+        if mkt_open and notice != "sent":
+            meta_set(conn, "market_notice", "sent")
+            msg = ("eBay now requires sign-in for sold/completed listings, so the recent-sold "
+                   "market price can't be read. New-listing and price-drop alerts are unaffected; "
+                   "🔥 below-market alerts are paused until a sold-data source is available.")
+            print(f"[{ts}] MARKET PRICING UNAVAILABLE: {msg}", file=sys.stderr)
+            if webhook and not webhook.startswith("PASTE_"):
+                try:
+                    send_simple_discord(webhook, "ℹ️ Below-market alerts paused", msg, 0xF39C12)
+                except Exception as e:
+                    print(f"market notice error: {e}", file=sys.stderr)
+        elif not mkt_open and notice == "sent":
+            meta_set(conn, "market_notice", "")
+            print(f"[{ts}] market pricing recovered.")
+            if webhook and not webhook.startswith("PASTE_"):
+                try:
+                    send_simple_discord(webhook, "✅ Below-market alerts resumed",
+                                        "Sold-listing data is readable again.", 0x2E7D32)
+                except Exception as e:
+                    print(f"market notice error: {e}", file=sys.stderr)
+
     if not dry_run and not reseed:
         watches = cfg.get("watches", [])
-        healthy = (total_scraped > 0 and total_matched > 0) or not watches
+        # Two distinct failure modes:
+        #  - scrape_broken: 0 listings scraped at all -> eBay is blocking us or the
+        #    page layout changed. This is unambiguous, so alert immediately.
+        #  - match_broken: listings scraped but 0 matched any watch. A single such
+        #    pass is normal during quiet periods (no live matches != scraper down),
+        #    so only treat it as a failure after N consecutive zero-match scans.
+        scrape_broken = bool(watches) and total_scraped == 0
+        match_broken = bool(watches) and total_scraped > 0 and total_matched == 0
+        zero_match_scans = int(cfg.get("zero_match_alert_scans", 3))
+        streak = int(meta_get(conn, "zero_match_streak", "0") or "0")
+        streak = streak + 1 if match_broken else 0
+        meta_set(conn, "zero_match_streak", streak)
+
+        healthy = not (scrape_broken or (match_broken and streak >= zero_match_scans))
         prev = meta_get(conn, "health", "ok")
         if not healthy and prev == "ok":
             meta_set(conn, "health", "down")
-            if total_scraped == 0:
+            if scrape_broken:
                 msg = (f"0 listings scraped across all {len(watches)} watch(es) — eBay may be blocking "
                        "the scraper or changed its page layout.")
             else:
-                msg = (f"{total_scraped} listings scraped but 0 matched any watch — a filter, the region "
-                       "filter, or an eBay layout change likely broke matching.")
+                msg = (f"{total_scraped} listings scraped but 0 matched any watch across "
+                       f"{streak} consecutive scans — a filter, the region filter, or an eBay "
+                       "layout change likely broke matching.")
             msg += " No alerts will fire until this recovers."
             print(f"[{ts}] HEALTH DOWN: {msg}", file=sys.stderr)
             if webhook and not webhook.startswith("PASTE_"):
@@ -1106,6 +1435,9 @@ def main():
     ap.add_argument("--reseed", action="store_true",
                     help="mark all current matches as seen without alerting (run after broadening "
                          "filters/queries so already-listed items don't flood you)")
+    ap.add_argument("--loop-for-minutes", type=float, default=None, metavar="N",
+                    help="scan repeatedly for N minutes then exit. Lets one scheduled CI run "
+                         "cover many scans, since GitHub delays '*/5' cron triggers to ~90min apart.")
     args = ap.parse_args()
 
     enable_file_logging()
@@ -1119,6 +1451,25 @@ def main():
         return
 
     interval = int(cfg.get("poll_interval_seconds", 300))
+
+    if args.loop_for_minutes is not None:
+        # Bounded loop for scheduled/CI use: keep scanning until the budget is spent,
+        # then exit cleanly so the caller can persist state. Always runs at least one
+        # pass, and never starts a pass it can't finish inside the window.
+        deadline = time.monotonic() + args.loop_for_minutes * 60
+        passes = 0
+        while True:
+            try:
+                scan_once(cfg, conn, notify_existing=args.notify_existing)
+            except Exception as e:
+                print(f"scan error: {e}", file=sys.stderr)
+            passes += 1
+            if time.monotonic() + interval >= deadline:
+                break
+            time.sleep(interval)
+        print(f"loop finished: {passes} pass(es) over {args.loop_for_minutes:g} min.")
+        return
+
     print(f"Starting eBay monitor. Interval={interval}s. Watches={[w['name'] for w in cfg['watches']]}")
     while True:
         try:
