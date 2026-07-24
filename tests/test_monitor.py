@@ -353,6 +353,15 @@ mixed = asks + [AL(200 + i, p, "PSA 10 Luffy OP05-119 Manga English")
 mref = m.active_asking_reference(mixed, AW, {"ungraded", "psa10"})
 ok("per-grade asking buckets stay separate",
    mref.get("ungraded") == 117.5 and mref.get("psa10") == 535.0)
+# A card number covering both a cheap base printing and an expensive SP: without a
+# price window the p25 lands in the junk cluster; min_price isolates the real card.
+bimodal = [AL(300 + i, p) for i, p in enumerate([3, 4, 5, 6, 7, 8, 9, 10])] + \
+          [AL(400 + i, p) for i, p in enumerate([300, 320, 340, 360, 380, 400, 420, 440])]
+check("bimodal without window picks junk cluster",
+      m.active_asking_reference(bimodal, AW, {"ungraded"}).get("ungraded"), 6.75)
+AW_MIN = dict(AW, min_price=100)
+check("min_price isolates the real comparables",
+      m.active_asking_reference(bimodal, AW_MIN, {"ungraded"}).get("ungraded"), 335.0)
 
 print("== market circuit breaker (sold data blocked) ==")
 # eBay requires sign-in for sold listings, so the fetch returns []. Retrying that

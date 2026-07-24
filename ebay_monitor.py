@@ -703,6 +703,11 @@ def active_asking_reference(listings, watch, wanted, pct=25, min_listings=8):
     a LOW percentile (default 25th) rather than the median: a listing has to be
     cheaper than most of what's currently listed to look like a deal. Auctions are
     excluded, since a mid-auction bid isn't an asking price and would drag it down.
+
+    The watch's min_price/max_price window also defines the comparable set. Some
+    card numbers cover both a cheap base card and an expensive SP/alt-art printing;
+    without a window the percentile lands in the cheap cluster and the reference is
+    meaningless (e.g. a $4 reference for a card whose SP sells in the hundreds).
     """
     require = watch.get("require", [])
     exclude = watch.get("exclude", [])
@@ -715,6 +720,8 @@ def active_asking_reference(listings, watch, wanted, pct=25, min_listings=8):
             continue
         if x.get("currency") not in (None, "USD"):
             continue                                  # keep the reference single-currency
+        if not price_ok(x["price_low"], watch):
+            continue                                  # respect the watch's price window
         if is_auction(x):
             continue
         if is_lot(x["title"]) and not allow_lots:
