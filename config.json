@@ -20,7 +20,8 @@
       "require": ["st26-005"],
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
       "language": "english",
-      "min_price": null,
+      "_min_price_note": "ST26-005 covers both the cheap base card and the SP. Observed: base raws $2-30 and base PSA 10 slabs $120-270; genuine SP raws start at $396 and SP PSA 10s at $1,100. 300 drops both junk clusters without excluding any real SP listing.",
+      "min_price": 300,
       "max_price": null
     },
     {
@@ -44,7 +45,8 @@
       "require": ["op05-119"],
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
       "language": "english",
-      "min_price": null,
+      "_min_price_note": "OP05-119 also matches cheap non-SEC printings. Observed a tight junk cluster at $10-75 (21 of 39 raws), with legitimate copies from $100 up. Raise this if base cards still slip through.",
+      "min_price": 100,
       "max_price": null
     },
     {
