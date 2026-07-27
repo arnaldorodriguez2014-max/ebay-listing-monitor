@@ -151,7 +151,8 @@
         [["celebi v", "celebiv", "celebi-v"], ["245/264", "245/265"]],
         [["celebi v", "celebiv", "celebi-v"], ["fusion strike", "fusionstrike", "swsh08", "swsh8", "fst"], "245", ["alt art", "alternate art", "alternate full art", "full art", "alternative art", "altart", "fullart", "aa"]]
       ],
-      "exclude": ["jumbo", "oversized", "bundle", "bulk", "playset", "booster box", "elite trainer", "etb", "cards collection", "cards lot", "card lot", "vunion"],
+      "_exclude_note": "sealed/bulk/lot terms (jumbo, booster box, ETB, cards lot, cards collection, ...) are now handled centrally by is_bulk_or_sealed(); only the card-specific 'vunion' (Celebi V-UNION) remains here.",
+      "exclude": ["vunion"],
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
       "_language_note": "language 'any' (not 'english'): unlike One Piece (same number across languages), the English Pokemon alt-art number is unique to the English set — the Japanese print has a different number — so the number already gates language, and 'english' would wrongly DROP legit 'English NOT Japanese'-style titles.",
       "language": "any",
@@ -169,7 +170,8 @@
         "pokemon giratina v 186/196 lost origin"
       ],
       "require": ["giratina", "186/196"],
-      "exclude": ["vstar", "jumbo", "oversized", "cards lot", "card lot", "bundle", "bulk", "playset", "master set", "booster box", "booster bundle", "collection box", "elite trainer", "etb", "premium collection", "ultra premium"],
+      "_exclude_note": "sealed/bulk/lot terms are now handled centrally by is_bulk_or_sealed(); only the card-specific 'vstar' (keeps out Giratina VSTAR) remains here.",
+      "exclude": ["vstar"],
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
       "_language_note": "language 'any': the English 186/196 number is unique to the English set (Japanese alt art is 111/100), so the number gates language and 'english' would drop legit 'English not Japanese' titles.",
       "language": "any",
@@ -193,7 +195,8 @@
         ["mew ex", ["bubble mew", "soap bubble"], ["paldean fates", "paldea fates", "paf"]],
         ["mew ex", "232", ["paldean fates", "paldea fates", "paf"], ["special illustration rare", "special illus", "specillus", "bubble mew", "soap bubble"]]
       ],
-      "exclude": ["216/091", "216/91", "mewtwo", "jumbo", "oversized", "cards lot", "card lot", "lot of", "bundle", "playset", "bulk", "master set", "complete set", "master collection"],
+      "_exclude_note": "sealed/bulk/lot terms are now handled centrally by is_bulk_or_sealed(); only the card-specific terms (the 216/091 sibling in both spellings, and mewtwo) remain here.",
+      "exclude": ["216/091", "216/91", "mewtwo"],
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
       "_language_note": "language 'any': the English 232/091 number is unique to the English set (Japanese Bubble Mew is 347/190), so the number gates language and 'english' would drop legit 'English NOT Japanese' titles.",
       "language": "any",

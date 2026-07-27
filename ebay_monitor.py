@@ -206,6 +206,14 @@ _LANG_JP = re.compile(r"\b(japanese|japan|jpn|jp)\b", re.IGNORECASE)
 _LANG_CN = re.compile(r"\b(chinese|china|chn|cn)\b", re.IGNORECASE)
 _LANG_KR = re.compile(r"\b(korean|korea|kor)\b", re.IGNORECASE)
 _LANG_EN = re.compile(r"\b(english|eng)\b", re.IGNORECASE)
+# Sellers of English cards often write "English NOT Japanese" / "not a Japan import";
+# the bare foreign word would otherwise flip the listing to that language and get it
+# dropped by an English-only watch. Strip negated mentions before detecting.
+_NEG_LANG = re.compile(
+    r"\bno[tn]\s+(?:an?\s+)?(?:japanese|japan|jpn|jp|chinese|china|chn|cn|korean|korea|kor)\b"
+    r"|\bnon[-\s]?(?:japanese|japan|chinese|china|korean|korea)\b",
+    re.IGNORECASE,
+)
 
 
 def title_language(title: str) -> str:
@@ -214,6 +222,7 @@ def title_language(title: str) -> str:
     Returns 'english', 'japanese', 'chinese', 'korean', 'cjk' (foreign but
     unspecified), or 'unknown' (no language marker at all).
     """
+    title = _NEG_LANG.sub(" ", title or "")
     # Explicit word markers win over raw script detection (a listing can contain
     # CJK but explicitly say "Japanese").
     if _LANG_CN.search(title):

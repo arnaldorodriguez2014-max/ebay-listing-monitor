@@ -69,6 +69,11 @@ check("unknown", m.title_language("Luffy ST26-005 Foil"), "unknown")
 ok("en keeps unknown", m.passes_language("Luffy ST26-005 Foil", "english"))
 ok("en drops japanese", not m.passes_language("Luffy Japanese", "english"))
 ok("any keeps japanese", m.passes_language("Luffy Japanese", "any"))
+# negated foreign mentions ("English NOT Japanese") must not flip an English card
+check("English NOT Japanese", m.title_language("Luffy OP05-119 English NOT Japanese"), "english")
+check("not a Japan import", m.title_language("Luffy OP05-119 not a Japan import English"), "english")
+ok("en keeps 'not japanese'", m.passes_language("Luffy OP05-119 English NOT Japanese", "english"))
+ok("bare japanese still dropped", not m.passes_language("Luffy OP05-119 Japanese", "english"))
 
 print("== matches_filters / require / aliases / match_any ==")
 ok("require hit (punct-insensitive)", m.matches_filters("Luffy OP05 119 Manga", ["op05-119"], []))
