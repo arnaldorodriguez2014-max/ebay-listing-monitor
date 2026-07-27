@@ -137,6 +137,42 @@
       "language": "any",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "Celebi V 245/264 Fusion Strike Alt Art",
+      "_note": "Pokemon (first non-One-Piece watch). Fusion Strike has NO regular Celebi V — 245/264 is the sole Celebi V in the set, so name+number uniquely identifies the alt art. Sig 1 = celebi v + full number (245264, incl. the common 245/265 typo). Sig 2 = celebi v + set + bare 245 + alt-art descriptor, guarding the collision-prone bare '245' (which substring-hits '245 cards' counts/certs). Excludes anchored ('cards lot' not bare 'lot', which would hit 'Holo Trading'->'holotrading'). Verified offline: 12/12 real titles matched, 12/12 confusables (Gengar VMAX 270/264, Genesect/Boltund 24x, bulk lots, sealed, jumbo, Japanese) rejected.",
+      "queries": [
+        "celebi v 245/264 alternate full art",
+        "celebi v 245/264 fusion strike alt art",
+        "pokemon celebi v fusion strike alternate full art",
+        "celebi v 245 fusion strike alt art teeziro"
+      ],
+      "match_any": [
+        [["celebi v", "celebiv", "celebi-v"], ["245/264", "245/265"]],
+        [["celebi v", "celebiv", "celebi-v"], ["fusion strike", "fusionstrike", "swsh08", "swsh8", "fst"], "245", ["alt art", "alternate art", "alternate full art", "full art", "alternative art", "altart", "fullart", "aa"]]
+      ],
+      "exclude": ["jumbo", "oversized", "bundle", "bulk", "playset", "booster box", "elite trainer", "etb", "cards collection", "cards lot", "card lot", "vunion"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "language": "english",
+      "min_price": null,
+      "max_price": null
+    },
+    {
+      "name": "Giratina V Alt Art 186/196 (Lost Origin)",
+      "_note": "Pokemon. Identify by number 186/196 (normalizes to '186196'): a contiguous substring unique to this card — the regular V is 130/196, and every Giratina VSTAR is 131/201/212. Require the bare name 'giratina' (NOT 'giratina v', whose norm 'giratinav' is a prefix of 'giratinavstar') + '186/196'; also exclude 'vstar' belt-and-suspenders. Excludes anchored ('cards lot' not bare 'lot', which would drop 'Holo TCG'->'holotcg'). Verified offline: 12/12 real titles matched, 14/14 confusables (regular V 130, VSTAR 131/201/212, Full Art 185/196, jumbo, master set/ETB/booster box, Japanese) rejected.",
+      "queries": [
+        "giratina v 186/196 lost origin",
+        "giratina v alt art 186/196 lost origin",
+        "giratina v alternate full art 186/196 lost origin",
+        "giratina v full art 186/196 swsh11",
+        "pokemon giratina v 186/196 lost origin"
+      ],
+      "require": ["giratina", "186/196"],
+      "exclude": ["vstar", "jumbo", "oversized", "cards lot", "card lot", "bundle", "bulk", "playset", "master set", "booster box", "booster bundle", "collection box", "elite trainer", "etb", "premium collection", "ultra premium"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "language": "english",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }

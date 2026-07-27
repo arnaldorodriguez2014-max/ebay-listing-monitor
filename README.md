@@ -18,15 +18,26 @@ in" country). Change with the top-level `allowed_regions` (e.g. `["US"]` or add
 more), or per-watch `allowed_regions`. Listings whose location can't be read are
 skipped unless `allow_unknown_region: true`.
 
-Currently watching (English unless noted; grades: ungraded / PSA 10 / BGS 10 / BGS 9.5):
-- **Luffy ST26-005 SP**
+The monitor is TCG-agnostic (grade detection, currency, and matching all work for any
+card game). Currently watching (English unless noted; grades: ungraded / PSA 10 / BGS 10 / BGS 9.5):
+
+**One Piece:**
+- **Luffy ST26-005 SP** — SP only (min_price filters out the cheap base card)
 - **Sanji OP10-005 Flagship Promo** — any language (JP/Asia promo), Flagship-only
-- **Luffy OP05-119 SEC (Alt / Manga Art)**
+- **Luffy OP05-119 SEC (Alt / Manga Art)** — SEC only (min_price filters the base card)
 - **Nami OP06-101 SP Alt Art (500 Years)** — also catches the OP07-101 numbering
 - **Chopper ST01-006 1st Anniversary** — also catches the "#006" numbering
 - **Nami OP15-086 Alt Art** — alt art only (not the base SR foil)
 - **Luffy OP05-060 PSA Magazine Promo** — the PSA Magazine Exclusive promo only
 - **Nami OP01-016 Gift Collection 2023** — the Gift Collection 2023 promo
+- **Luffy P-099 (Event Pack Vol. 8)** — any language (JP promo)
+
+**Pokémon:**
+- **Celebi V 245/264** — Fusion Strike alternate full art (the only Celebi V in the set)
+- **Giratina V 186/196** — Lost Origin alternate full art (not the regular V or any VSTAR)
+
+> Note: Pokémon slabs are often graded by **CGC/SGC**, which the current grade buckets treat
+> as "other" and don't alert on — these watches track raw + PSA 10 / BGS 10 / BGS 9.5 only.
 
 ## ☁️ Cloud deployment (primary — runs even when your PC is off)
 
