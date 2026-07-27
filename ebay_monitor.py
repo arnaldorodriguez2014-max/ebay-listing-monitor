@@ -164,7 +164,11 @@ GRADING_COMPANIES = [
 # The separator class allows the common "PSA-10" / "BGS-9.5" / "PSA10" spellings
 # (not just "PSA 10"), which would otherwise fall through to other_graded.
 _SEP = r"[\s\-.]*"
-_PSA10 = re.compile(r"\bPSA" + _SEP + r"10\b")
+# Sellers put grade words between "PSA" and "10" ("PSA GEM MT 10", "PSA Grade 10").
+# Allow those so such slabs classify as psa10, not other_graded. "GRADE" (not "GRADED")
+# keeps "PSA Graded 10 Cards Lot" out of the psa10 bucket.
+_PSA_LABEL = r"(?:(?:GEM|MINT|MT|GM|GRADE)" + _SEP + r")*"
+_PSA10 = re.compile(r"\bPSA" + _SEP + _PSA_LABEL + r"10\b")
 _BGS95 = re.compile(r"\b(?:BGS|BECKETT)" + _SEP + r"9\.5\b")
 _BGS10 = re.compile(r"\b(?:BGS|BECKETT)" + _SEP + r"10\b")
 # "is this graded at all?" — an unambiguous company token anywhere in the title.
@@ -253,7 +257,10 @@ def passes_language(title: str, want: str) -> bool:
 # eBay fuzzy-matches card numbers, so a watch should list the exact identifier(s)
 # in "require" (ALL must appear). These are dropped everywhere by default — they're
 # proxies / replicas, not real singles.
-DEFAULT_EXCLUDE = ["proxy", "orica", "oricard", "custommade", "handmade", "metalcard", "sealedbooster"]
+# "extended art"/"extended artwork" cases are acrylic display-case MERCH printed with
+# the card's art, not the card itself — drop them ("extendedart" is collision-free).
+DEFAULT_EXCLUDE = ["proxy", "orica", "oricard", "custommade", "handmade", "metalcard",
+                   "sealedbooster", "extended art"]
 
 
 def _norm(s: str) -> str:
@@ -270,12 +277,46 @@ _DEFAULT_EXCLUDE_NORM = [_norm(t) for t in DEFAULT_EXCLUDE if _norm(t)]
 # the dash form (OP06-101) — real lots use it, and it avoids false hits on set
 # code + year adjacency like "OP15 2026".
 _CARDNUM_RE = re.compile(r"\b[a-z]{2,4}\d{1,2}-\d{2,4}\b", re.IGNORECASE)
+# Pokemon-style collector numbers (e.g. "232/091"). Two DIFFERENT numbers sharing the
+# same set total (denominator) is a same-set multi-card lot ("232/091 + 216/091").
+_PKMN_NUM_RE = re.compile(r"\b(\d{1,3})/(\d{2,3})\b")
 
 
 def is_lot(title: str) -> bool:
-    """True if the title references two or more different card numbers."""
+    """True if the title references two or more different card numbers (One Piece
+    dash codes, or two Pokemon numbers sharing a set total)."""
     nums = {m.lower() for m in _CARDNUM_RE.findall(title)}
-    return len(nums) >= 2
+    if len(nums) >= 2:
+        return True
+    by_denom = {}
+    for num, den in _PKMN_NUM_RE.findall(title):
+        by_denom.setdefault(den, set()).add(num)
+    return any(len(v) >= 2 for v in by_denom.values())
+
+
+# Sealed product and bulk/quantity listings that mention the target card otherwise
+# pass the require filter (is_lot only catches multi-*number* titles). Match these on
+# the RAW title with WORD BOUNDARIES — a normalized-substring test would misfire
+# ("holotcg" contains "lot", "trumpetbandit" contains "etb"). One central gate means
+# watches no longer each re-list these terms.
+_BULK_SEALED_RE = re.compile(
+    r"\b(?:"
+    r"booster box|booster bundle|booster pack|"
+    r"elite trainer box|elite trainer|etb|"
+    r"premium collection|ultra premium collection|collection box|"
+    r"build ?(?:&|and) ?battle|"
+    r"master set|complete set|master collection|cards? collection|"
+    r"bulk|playset|"
+    r"lot of \d+|\d+ ?cards? lot|cards? lot|lot|"
+    r"bundle|jumbo|oversized"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def is_bulk_or_sealed(title: str) -> bool:
+    """True if the title is sealed product or a bulk/quantity lot (not a single card)."""
+    return bool(_BULK_SEALED_RE.search(title or ""))
 
 
 def _require_ok(nt: str, require) -> bool:
@@ -644,7 +685,7 @@ def fetch_sold_sales(domain, watch):
         # ebay.com is USD). A CAD/GBP/EUR sale would skew the USD comparison.
         if x.get("currency") not in (None, "USD"):
             continue
-        if is_lot(x["title"]) and not allow_lots:
+        if (is_lot(x["title"]) or is_bulk_or_sealed(x["title"])) and not allow_lots:
             continue
         if not matches_filters(x["title"], require, exclude, match_any):
             continue
@@ -724,7 +765,7 @@ def active_asking_reference(listings, watch, wanted, pct=25, min_listings=8):
             continue                                  # respect the watch's price window
         if is_auction(x):
             continue
-        if is_lot(x["title"]) and not allow_lots:
+        if (is_lot(x["title"]) or is_bulk_or_sealed(x["title"])) and not allow_lots:
             continue
         if not matches_filters(x["title"], require, exclude, match_any):
             continue
@@ -1160,7 +1201,7 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         today = now_iso[:10]
 
         for lst in listings:
-            if is_lot(lst["title"]) and not allow_lots:
+            if (is_lot(lst["title"]) or is_bulk_or_sealed(lst["title"])) and not allow_lots:
                 continue
             if is_auction(lst) and not allow_auctions:
                 continue

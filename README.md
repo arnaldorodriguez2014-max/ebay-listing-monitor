@@ -184,7 +184,11 @@ Add entries to the `watches` array in `config.json`:
   distinguishing words too, e.g. `["op10-005", "flagship"]` to get only the
   Flagship promo and not the same-numbered base card.
 - `exclude` — optional extra terms to reject. Proxies/replicas
-  (`proxy`, `orica`, `custom`, `handmade`, …) are already excluded globally.
+  (`proxy`, `orica`, `custom`, `handmade`, …) and **extended-art display cases**
+  (merch, not the card) are already excluded globally. Sealed product and bulk/quantity
+  lots (booster box, ETB, "N cards lot", "lot of N", jumbo, …) are also detected
+  centrally (`is_bulk_or_sealed`, word-boundary matched on the raw title so it can't
+  misfire on things like "Holo TCG"), so watches don't need to list those per-card.
 - `grades` — any of: `ungraded`, `psa10`, `bgs10`, `bgs9.5`. (More can be added in
   `classify_grade()` — e.g. `psa9`, `cgc10`.)
 - `language` — `english` (default), `japanese`, `chinese`, `korean`, or `any`.

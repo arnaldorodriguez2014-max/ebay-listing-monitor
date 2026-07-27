@@ -56,6 +56,11 @@ check("PSA-10 hyphen", m.classify_grade("Luffy ST26-005 PSA-10 Gem"), "psa10")
 check("PSA10 no space", m.classify_grade("Luffy ST26-005 PSA10"), "psa10")
 check("BGS-9.5 hyphen", m.classify_grade("Luffy BGS-9.5"), "bgs9.5")
 check("BGS10 no space", m.classify_grade("Luffy BGS10 Pristine"), "bgs10")
+# grade words between "PSA" and "10" must still bucket as psa10 (common on slabs)
+check("PSA GEM MT 10", m.classify_grade("Charizard PSA GEM MT 10 020/073"), "psa10")
+check("PSA Grade 10", m.classify_grade("Celebi V 245/264 PSA Grade 10"), "psa10")
+check("PSA GEM MINT 10", m.classify_grade("Mew ex 232/091 PSA GEM MINT 10"), "psa10")
+check("PSA Graded 10 lot stays other", m.classify_grade("PSA Graded 10 Cards Lot"), "other_graded")
 
 print("== language ==")
 check("japanese word", m.title_language("Luffy ST26-005 Japanese"), "japanese")
@@ -82,6 +87,29 @@ ok("match_any base excluded", not m.matches_filters("Nami OP15-086 Foil Kami Isl
 print("== is_lot ==")
 ok("multi-number lot", m.is_lot("Luffy OP12-015 + ST26-005 + OP02-062 Set"))
 ok("single card not lot", not m.is_lot("Bandai OP15 Luffy ST26-005 SP 2026"))
+# Pokemon same-set multi-number lot (two numbers sharing a set total)
+ok("pokemon two-number lot", m.is_lot("Mew ex 232/091 + 216/091 two-card lot"))
+ok("pokemon single not lot", not m.is_lot("Mew ex 232/091 Paldean Fates SIR"))
+ok("pop-report ratio not lot", not m.is_lot("Mew ex 232/091 PSA 10 POP 12/500"))
+
+print("== is_bulk_or_sealed (word-boundary; no substring misfire) ==")
+ok("booster box", m.is_bulk_or_sealed("Celebi V 245/264 Fusion Strike Booster Box Sealed"))
+ok("ETB", m.is_bulk_or_sealed("Giratina V 186/196 Lost Origin Elite Trainer Box ETB"))
+ok("bulk lot", m.is_bulk_or_sealed("Mew ex 232/091 Bulk Lot 50 Cards"))
+ok("cards collection", m.is_bulk_or_sealed("Fusion Strike 245 Cards Collection Celebi V"))
+ok("bare word lot", m.is_bulk_or_sealed("Giratina V 186/196 + Palkia lot"))
+ok("Holo TCG single (not sealed)", not m.is_bulk_or_sealed("Giratina V 186/196 Lost Origin Holo TCG"))
+ok("Holo Trading Card single", not m.is_bulk_or_sealed("Celebi V 245/264 Fusion Strike Holo Trading Card"))
+ok("etb substring not misfire", not m.is_bulk_or_sealed("Pokemon trumpetbandit Celebi V 245/264"))
+ok("plain single not sealed", not m.is_bulk_or_sealed("Mew ex 232/091 Paldean Fates SIR NM"))
+
+print("== extended-art-case merch exclude ==")
+ok("extended artwork case excluded",
+   not m.matches_filters("Pokemon Mew EX SIR Paldean Fates 232/091 Extended Artwork Case", ["mew ex"], []))
+ok("extended art case excluded",
+   not m.matches_filters("Celebi V 245/264 Fusion Strike Extended Art Case Display", ["celebi v"], []))
+ok("real card not excluded by art-case term",
+   m.matches_filters("Mew ex 232/091 Paldean Fates SIR NM", ["mew ex"], []))
 
 print("== is_auction ==")
 ok("auction with bids", m.is_auction({"bids": "5 bids", "format": None}))
