@@ -1,6 +1,6 @@
 {
   "discord_webhook_url": "",
-  "poll_interval_seconds": 300,
+  "poll_interval_seconds": 180,
   "ebay_domain": "www.ebay.com",
   "price_drop_pct": 5,
   "price_drop_min": 1,

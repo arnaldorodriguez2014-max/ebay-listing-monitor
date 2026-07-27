@@ -1,7 +1,10 @@
 name: eBay Listing Monitor
 
-# Runs one scan pass every ~5 minutes in the cloud, independent of any local
-# machine. GitHub may delay scheduled runs a few minutes under load.
+# GitHub throttles scheduled cron hard (measured ~80 min median between fires, not
+# the 5 min requested). So instead of one pass per trigger, each triggered job LOOPS
+# internally for ~50 minutes, scanning every ~3 min (poll_interval_seconds in
+# config.json), then exits so the updated seen.db is committed once. This turns the
+# unreliable ~hourly trigger into ~3-min notification granularity while a job runs.
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -18,6 +21,7 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 55       # safety cap; the loop self-exits at 50 min
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,10 +35,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run monitor (one pass)
+      - name: Run monitor (loop for ~50 min, scanning every few minutes)
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: python ebay_monitor.py --once
+        run: python ebay_monitor.py --loop-for-minutes 50
 
       - name: Persist seen listings (only when changed)
         run: |

@@ -52,8 +52,14 @@ This monitor runs in the cloud on **GitHub Actions**, so it works 24/7 regardles
 of whether any local machine is on:
 
 - **Repo:** https://github.com/cal-chan-cloud/ebay-listing-monitor (public)
-- **Schedule:** `.github/workflows/monitor.yml` runs `ebay_monitor.py --once` every
-  ~5 minutes (GitHub may delay a few minutes under load).
+- **Schedule / cadence:** `.github/workflows/monitor.yml` is triggered by cron, but
+  GitHub throttles scheduled cron hard (measured ~80 min median between fires, not the
+  5 min requested). So each triggered job **loops for ~50 minutes**, scanning every
+  ~3 min (`poll_interval_seconds`, via `--loop-for-minutes 50`), then exits so the
+  updated `seen.db` is committed once. Net effect: ~3-min notification granularity
+  while a job is running, with ~30-min gaps between jobs. For true near-zero delay,
+  run the loop on an always-on host instead (see "Local setup"). Scans fetch all
+  watches concurrently (`scan_workers`, default 6), so a full pass takes ~15-20s.
 - **Webhook:** stored as the encrypted GitHub Actions secret `DISCORD_WEBHOOK_URL`
   — it is **not** in the public code (`config.json`'s `discord_webhook_url` is left
   blank; the script reads the env var first).
