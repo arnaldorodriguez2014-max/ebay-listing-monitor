@@ -123,6 +123,20 @@
       "language": "english",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "Luffy P-099 (Event Pack Vol. 8)",
+      "queries": [
+        "luffy p-099 event pack",
+        "monkey d luffy p-099 event pack vol 8",
+        "one piece luffy event pack vol 8 p-099"
+      ],
+      "require": ["p-099", "event pack"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "_language_note": "Event Pack Vol.8 is a Japanese product, so use 'any' — 'english' would drop US/CA listings that tag the card 'Japanese'. 'p-099' is paired with 'event pack' because the bare number normalizes to 'p099', which collides with 'OP09 99'-style titles.",
+      "language": "any",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }
