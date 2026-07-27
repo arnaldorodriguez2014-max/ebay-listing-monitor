@@ -451,6 +451,24 @@ with open(m.LOG_PATH, "w", encoding="utf-8") as _f:
 m._rotate_log_if_large()
 ok("small log not rotated", os.path.exists(m.LOG_PATH))
 
+print("== fetch_all_watches (parallel fetch: mapping + error isolation) ==")
+_saved_fetch_all = m.fetch_all
+_wl = [{"name": f"W{i}", "queries": ["q"]} for i in range(6)]
+m.fetch_all = lambda d, w, **k: [{"item_id": w["name"] + "-1"}]
+_res = m.fetch_all_watches("www.ebay.com", _wl, workers=4)
+ok("all watches fetched", len(_res) == 6)
+ok("per-watch mapping preserved", all(_res[i][0]["item_id"] == f"W{i}-1" for i in range(6)))
+ok("workers=1 fallback", len(m.fetch_all_watches("www.ebay.com", _wl, workers=1)) == 6)
+ok("empty watches -> empty", m.fetch_all_watches("www.ebay.com", [], workers=4) == {})
+def _flaky(d, w, **k):
+    if w["name"] == "W2":
+        raise RuntimeError("boom")
+    return [{"item_id": w["name"]}]
+m.fetch_all = _flaky
+_r = m.fetch_all_watches("www.ebay.com", _wl, workers=4)
+ok("failed watch isolated to []", _r[2] == [] and _r[0] and _r[1])
+m.fetch_all = _saved_fetch_all
+
 print("\n==== RESULT ====")
 if fails:
     print("FAILURES:", fails)

@@ -21,7 +21,9 @@ import os
 import re
 import sqlite3
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 from urllib.parse import urlencode
@@ -111,8 +113,10 @@ HEADERS = {
 
 # eBay's bot protection 403s a cold request; visiting the homepage first seeds the
 # cookies needed for search pages to return 200. We keep one session and re-prime
-# it if a search ever comes back forbidden.
+# it if a search ever comes back forbidden. The lock makes lazy init safe when
+# watches are fetched concurrently (many threads may call get_session at once).
 _SESSION = None
+_SESSION_LOCK = threading.Lock()
 
 
 def _build_session():
@@ -140,8 +144,10 @@ def _build_session():
 def get_session(domain: str):
     global _SESSION
     if _SESSION is None:
-        _SESSION = _build_session()
-        prime_session(domain)
+        with _SESSION_LOCK:                 # double-checked: prime exactly once
+            if _SESSION is None:
+                _SESSION = _build_session()
+                prime_session(domain)
     return _SESSION
 
 
@@ -638,7 +644,7 @@ def fetch_listings(domain: str, query: str, max_attempts: int = 4, sold: bool = 
     return listings
 
 
-def fetch_all(domain: str, watch: dict, delay: float = 0.6, sold: bool = False):
+def fetch_all(domain: str, watch: dict, delay: float = 0.3, sold: bool = False):
     """Fetch a watch across all its search phrasings and merge+dedupe by item id.
 
     A watch may set "queries" (a list) to search several wordings; falls back to
@@ -657,6 +663,40 @@ def fetch_all(domain: str, watch: dict, delay: float = 0.6, sold: bool = False):
         except Exception as e:
             print(f"[{watch.get('name','?')}] query {q!r} error: {e}", file=sys.stderr)
     return list(merged.values())
+
+
+def fetch_all_watches(domain: str, watches, workers: int = 6):
+    """Fetch every watch's active listings CONCURRENTLY -> {index: listings}.
+
+    Network fetch is the scan's bottleneck (dozens of sequential HTTP round-trips);
+    fetching watches in parallel cuts the wall-clock roughly `workers`-fold. Only the
+    pure fetch is parallel — the caller still does all DB writes and Discord sends
+    sequentially in the main thread, so there is no shared-state hazard. The session
+    is primed once (thread-safe) and shared; per-query retry/re-prime is unchanged.
+    """
+    results = {}
+    watches = list(watches or [])
+    if not watches:
+        return results
+    workers = max(1, min(int(workers), len(watches)))
+
+    def _one(item):
+        i, watch = item
+        try:
+            return i, fetch_all(domain, watch)
+        except Exception as e:
+            print(f"[{watch.get('name', '?')}] fetch error: {e}", file=sys.stderr)
+            return i, []
+
+    if workers == 1:
+        for item in enumerate(watches):
+            i, lst = _one(item)
+            results[i] = lst
+        return results
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        for i, lst in ex.map(_one, list(enumerate(watches))):
+            results[i] = lst
+    return results
 
 
 def _median(values):
@@ -1149,17 +1189,18 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
     total_scraped = 0
     total_matched = 0
 
-    for watch in cfg.get("watches", []):
+    # Fetch every watch's active listings up front, in parallel (the scan's slow part
+    # is HTTP, not compute). Processing below stays sequential in this thread.
+    watches = cfg.get("watches", [])
+    fetched = fetch_all_watches(domain, watches, workers=int(cfg.get("scan_workers", 6)))
+
+    for wi, watch in enumerate(watches):
         name = watch["name"]
         wanted = set(g.lower() for g in watch.get("grades", []))
         # normalise "bgs9.5" vs "bgs 9.5"
         wanted = {g.replace(" ", "") for g in wanted}
 
-        try:
-            listings = fetch_all(domain, watch)
-        except Exception as e:
-            print(f"[{ts}] [{name}] fetch error: {e}", file=sys.stderr)
-            continue
+        listings = fetched.get(wi, [])
         total_scraped += len(listings)
 
         # Load this watch's seen items as {item_id: (price, price_str, below_alerted)}
@@ -1285,7 +1326,7 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                     conn.commit()
                     seen_prices[item_id] = (cur, cur_str, 1 if below else 0)
                     drop_count += 1
-                    time.sleep(0.4)
+                    time.sleep(0.25)
                     continue
                 # (2) newly below market (no drop this pass)?
                 if below and not ref_below:
@@ -1312,7 +1353,7 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                     conn.commit()
                     seen_prices[item_id] = (ref_price, ref_str, 1)
                     below_count += 1
-                    time.sleep(0.4)
+                    time.sleep(0.25)
                 elif not below and ref_below:
                     # no longer below market -> clear the flag (no alert)
                     conn.execute("UPDATE seen SET below_alerted=0 WHERE watch=? AND item_id=?", (name, item_id))
@@ -1344,7 +1385,7 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                       f"{' 🔥below-market' if below else ''} {lst['url']}")
             mark_seen(conn, name, item_id, grade, cur, cur_str, below_alerted=1 if below else 0)
             new_count += 1
-            time.sleep(0.4)  # be gentle with the webhook
+            time.sleep(0.25)  # be gentle with the webhook
 
         # Batch DB writes: bulk-insert new seeds, bulk-update changed prices,
         # and refresh last_seen (only rewrites rows whose date actually changed,
