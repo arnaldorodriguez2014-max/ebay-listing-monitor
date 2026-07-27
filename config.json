@@ -153,7 +153,8 @@
       ],
       "exclude": ["jumbo", "oversized", "bundle", "bulk", "playset", "booster box", "elite trainer", "etb", "cards collection", "cards lot", "card lot", "vunion"],
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
-      "language": "english",
+      "_language_note": "language 'any' (not 'english'): unlike One Piece (same number across languages), the English Pokemon alt-art number is unique to the English set — the Japanese print has a different number — so the number already gates language, and 'english' would wrongly DROP legit 'English NOT Japanese'-style titles.",
+      "language": "any",
       "min_price": null,
       "max_price": null
     },
@@ -170,7 +171,32 @@
       "require": ["giratina", "186/196"],
       "exclude": ["vstar", "jumbo", "oversized", "cards lot", "card lot", "bundle", "bulk", "playset", "master set", "booster box", "booster bundle", "collection box", "elite trainer", "etb", "premium collection", "ultra premium"],
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
-      "language": "english",
+      "_language_note": "language 'any': the English 186/196 number is unique to the English set (Japanese alt art is 111/100), so the number gates language and 'english' would drop legit 'English not Japanese' titles.",
+      "language": "any",
+      "min_price": null,
+      "max_price": null
+    },
+    {
+      "name": "Mew ex 232/091 SIR (Paldean Fates)",
+      "_note": "Pokemon. 232/091 is the Special Illustration Rare 'Bubble Mew'; the only sibling in the set is Mew ex 216/091 (Shiny UR), excluded by number (both 216/091 and 216/91 spellings). match_any also handles the common '232/91' leading-zero form (normalizes to '23291', distinct from '232091'), a bare '#232'+set+SIR path, and a numberless 'bubble mew'+set path. Require 'mew ex' not bare 'mew' (which substring-hits 'mewtwo', also excluded). Verified offline: 13/13 real titles matched, 13/13 confusables (216/091 both forms, Mewtwo, 151-set Mew ex 205/165 & 193/165, bulk/master-set/jumbo/sealed, Japanese 347/190) rejected.",
+      "queries": [
+        "mew ex 232/091 paldean fates",
+        "mew ex 232/091 special illustration rare",
+        "pokemon mew ex 232/091 sir paldean fates",
+        "bubble mew ex 232/091 paldean fates",
+        "mew ex 232/91 paldean fates sir bubble mew",
+        "pokemon mew ex 232/091 alt art paldean fates"
+      ],
+      "match_any": [
+        ["mew ex", ["232/091", "232/91"]],
+        [["232/091", "232/91"], "mew", ["paldean fates", "paldea fates", "paf"]],
+        ["mew ex", ["bubble mew", "soap bubble"], ["paldean fates", "paldea fates", "paf"]],
+        ["mew ex", "232", ["paldean fates", "paldea fates", "paf"], ["special illustration rare", "special illus", "specillus", "bubble mew", "soap bubble"]]
+      ],
+      "exclude": ["216/091", "216/91", "mewtwo", "jumbo", "oversized", "cards lot", "card lot", "lot of", "bundle", "playset", "bulk", "master set", "complete set", "master collection"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "_language_note": "language 'any': the English 232/091 number is unique to the English set (Japanese Bubble Mew is 347/190), so the number gates language and 'english' would drop legit 'English NOT Japanese' titles.",
+      "language": "any",
       "min_price": null,
       "max_price": null
     }

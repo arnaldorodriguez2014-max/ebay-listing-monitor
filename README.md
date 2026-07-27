@@ -32,12 +32,19 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Nami OP01-016 Gift Collection 2023** — the Gift Collection 2023 promo
 - **Luffy P-099 (Event Pack Vol. 8)** — any language (JP promo)
 
-**Pokémon:**
+**Pokémon** (`language: any` — see note):
 - **Celebi V 245/264** — Fusion Strike alternate full art (the only Celebi V in the set)
 - **Giratina V 186/196** — Lost Origin alternate full art (not the regular V or any VSTAR)
+- **Mew ex 232/091** — Paldean Fates "Bubble Mew" Special Illustration Rare (not the 216/091 Shiny)
 
-> Note: Pokémon slabs are often graded by **CGC/SGC**, which the current grade buckets treat
-> as "other" and don't alert on — these watches track raw + PSA 10 / BGS 10 / BGS 9.5 only.
+> Language note: Pokémon watches use `language: any`, not `english`. Unlike One Piece (where
+> a card shares one number across languages, so `english` usefully filters), a Pokémon card's
+> English and Japanese prints have **different collector numbers** — so requiring the English
+> number already excludes the Japanese card, and `english` would only do harm by dropping legit
+> listings that say "English **NOT Japanese**".
+>
+> Grade note: Pokémon slabs are often graded by **CGC/SGC**, which the current grade buckets
+> treat as "other" and don't alert on — these watches track raw + PSA 10 / BGS 10 / BGS 9.5 only.
 
 ## ☁️ Cloud deployment (primary — runs even when your PC is off)
 
