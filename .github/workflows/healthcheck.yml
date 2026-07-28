@@ -1,0 +1,32 @@
+name: Monitor Watchdog
+
+# Independent of the monitor workflow: catches SILENT failures the monitor's own
+# in-scan health check can't (the monitor stopping entirely, every run crashing, or
+# an unresolved "down" state). Pings Discord if any of those is true.
+on:
+  schedule:
+    - cron: "23 */3 * * *"   # every ~3h, offset off the hour
+  workflow_dispatch: {}
+
+# A separate concurrency group so this never queues behind the long monitor jobs.
+concurrency:
+  group: ebay-watchdog
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read              # to list monitor.yml runs
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check monitor freshness + health
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/watchdog.py
