@@ -1364,11 +1364,12 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                     seen_prices[item_id] = (ref_price, ref_str, 1)
                     below_count += 1
                     time.sleep(0.25)
-                elif not below and ref_below:
-                    # no longer below market -> clear the flag (no alert)
-                    conn.execute("UPDATE seen SET below_alerted=0 WHERE watch=? AND item_id=?", (name, item_id))
-                    conn.commit()
-                    seen_prices[item_id] = (ref_price, ref_str, 0)
+                # NOTE: below_alerted is STICKY — we deliberately do NOT clear it when an
+                # item goes "not below" again. The asking-price reference is recomputed
+                # every scan from live listings and jitters (and is None on scans with too
+                # few comps), so clearing on "not below" made the flag flap and re-fired
+                # duplicate below-market pings for the same item. One deal ping per item is
+                # enough; a genuine later price cut is still caught by the price-drop alert.
                 continue
 
             # ---- brand-new listing ----

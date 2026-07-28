@@ -264,6 +264,16 @@ ok("below-market crossing pings", any(r[0] == "below_market" and r[1] == "b2" fo
 ok("below-market not repeated", not any(r[0] == "below_market" for r in run([L("b2", "$98.00", 98.0)])))
 below_flag = conn.execute("SELECT below_alerted FROM seen WHERE item_id='b2'").fetchone()[0]
 ok("below_alerted persisted", below_flag == 1)
+# STICKY: the asking reference jitters (and is None on thin scans). Once alerted, an
+# item must NOT re-fire below-market when the reference dips "not below" then returns.
+MKT["v"] = 100.0                            # 98 no longer below (needs <95) -> would clear the flag
+ok("no ping on jitter to not-below", not any(r[0] == "below_market" for r in run([L("b2", "$98.00", 98.0)])))
+MKT["v"] = None                            # reference unavailable this scan (too few comps)
+ok("no ping when reference missing", not any(r[0] == "below_market" for r in run([L("b2", "$98.00", 98.0)])))
+MKT["v"] = 120.0                           # reference returns; item below again
+ok("no DUPLICATE below-market on re-cross", not any(r[0] == "below_market" for r in run([L("b2", "$98.00", 98.0)])))
+ok("below_alerted stays sticky", conn.execute("SELECT below_alerted FROM seen WHERE item_id='b2'").fetchone()[0] == 1)
+MKT["v"] = 100.0
 
 # A CAD-priced listing must NOT be compared against the USD market median (that
 # manufactured fake deals). It still alerts as new, but never below-market.
