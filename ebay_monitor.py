@@ -459,6 +459,12 @@ def build_search_url(domain: str, query: str, sold: bool = False) -> str:
         params.update({"LH_Sold": "1", "LH_Complete": "1", "_sop": "13"})
     else:
         params["_sop"] = "10"     # newest first
+        # Force US-located items. eBay geo-localizes results by the caller's IP, and
+        # cloud runners can get a Japan-only, yen-priced result set (breaking the
+        # region filter -> 0 matched, and price parsing -> garbage). LH_PrefLoc=1
+        # surfaces US listings regardless of runner geo. All watches filter to US/CA
+        # anyway, so this only helps.
+        params["LH_PrefLoc"] = "1"
     return f"https://{domain}/sch/i.html?" + urlencode(params)
 
 
@@ -502,6 +508,10 @@ _CURRENCY_PATTERNS = [
     ("AUD", re.compile(r"\bAU\s*\$|\bAUD\b", re.IGNORECASE)),
     ("GBP", re.compile(r"£|\bGBP\b")),
     ("EUR", re.compile(r"€|\bEUR\b")),
+    # Yen (¥ / 円) and Won (₩): eBay can serve these to non-US-geo callers. If not
+    # detected, "¥893,534" parses as $893,534 and poisons the USD references.
+    ("JPY", re.compile(r"¥|円|\bJPY\b")),
+    ("KRW", re.compile(r"₩|\bKRW\b")),
     ("USD", re.compile(r"\bUS\s*\$|\bUSD\b|\$")),
 ]
 
