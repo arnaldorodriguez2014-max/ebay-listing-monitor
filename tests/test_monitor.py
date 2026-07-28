@@ -205,6 +205,20 @@ jp = L("7", "$10.00", 10.0); jp["location"] = "Japan"
 res = run([jp, L("1", "$200.00", 200.0)])   # jp excluded (region); item 1 seen -> no alert
 ok("japan listing excluded in scan", not any(r[1] == "7" for r in res))
 
+# scan_once returns the number of alerts fired (loop mode uses this to persist seen.db
+# immediately after an alerting scan, so a cancelled/killed job can't cause re-pings).
+def run_ret(fixtures, **kw):
+    m.fetch_listings = lambda d, q, **k: list(fixtures)
+    m.fetch_all = lambda d, w, **k: list(fixtures)
+    sends.clear()
+    r = m.scan_once(CFG, conn, **kw)
+    return r, list(sends)
+rc, s1 = run_ret([L("retnew", "$40.00", 40.0)])         # brand-new item -> 1 alert
+ok("scan_once returns alert count", rc == len(s1) == 1)
+rc2, s2 = run_ret([L("retnew", "$40.00", 40.0)])        # now seen -> 0 alerts
+ok("returns 0 when nothing new", rc2 == 0 and s2 == [])
+ok("persist_seen_ci is a no-op outside CI", m.persist_seen_ci() is None)
+
 print("== health check + prune ==")
 m.meta_set(conn, "health", "ok"); health.clear()
 run([])                                   # 0 scraped across all watches -> down (scrape broken)

@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sqlite3
+import subprocess
 import sys
 import threading
 import time
@@ -1198,6 +1199,7 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
               "(no below-market alerts this pass).")
     total_scraped = 0
     total_matched = 0
+    total_alerts = 0        # new + drop + below pings this scan (drives CI persistence)
 
     # Fetch every watch's active listings up front, in parallel (the scan's slow part
     # is HTTP, not compute). Processing below stays sequential in this thread.
@@ -1426,6 +1428,7 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
             print(f"[{ts}] [{name}] {len(listings)} scraped, {matched} matched, "
                   f"{new_count} new, {drop_count} drop(s), {below_count} below-market{mtxt}.")
         total_matched += matched
+        total_alerts += new_count + drop_count + below_count
 
     # --- after all watches: prune stale rows + health check on the whole scan ---
     if ask_baseline:
@@ -1505,6 +1508,35 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                 except Exception as e:
                     print(f"health alert error: {e}", file=sys.stderr)
 
+    return total_alerts
+
+
+def persist_seen_ci():
+    """In CI (loop mode), commit+push seen.db so alerts are never lost if the job is
+    later cancelled/killed before the workflow's end-of-run persist step.
+
+    Called only after a scan that actually fired alerts, so it adds a git push only
+    when there's freshly-alerted state to protect — quiet scans push nothing. No-op
+    outside GitHub Actions (local runs / tests never touch git)."""
+    if not os.environ.get("GITHUB_ACTIONS"):
+        return
+    try:
+        status = subprocess.run(["git", "status", "--porcelain", "seen.db"],
+                                cwd=HERE, capture_output=True, text=True)
+        if not status.stdout.strip():
+            return                                  # seen.db unchanged; nothing to persist
+        subprocess.run(["git", "add", "seen.db"], cwd=HERE, check=True)
+        subprocess.run(
+            ["git", "-c", "user.name=github-actions[bot]",
+             "-c", "user.email=41898282+github-actions[bot]@users.noreply.github.com",
+             "commit", "-m", "chore: update seen listings [skip ci]"],
+            cwd=HERE, check=True)
+        if subprocess.run(["git", "push"], cwd=HERE).returncode != 0:
+            subprocess.run(["git", "pull", "--rebase", "--autostash"], cwd=HERE)
+            subprocess.run(["git", "push"], cwd=HERE)
+    except Exception as e:
+        print(f"seen.db CI persist warning: {e}", file=sys.stderr)
+
 
 def validate_config(cfg):
     """Print warnings for likely-misconfigured watches. Returns the warning list."""
@@ -1569,7 +1601,11 @@ def main():
         passes = 0
         while True:
             try:
-                scan_once(cfg, conn, notify_existing=args.notify_existing)
+                alerts = scan_once(cfg, conn, notify_existing=args.notify_existing) or 0
+                # Persist immediately after any alerting scan so a later cancel/kill of
+                # this long job can't drop the "seen" state and re-ping next run.
+                if alerts:
+                    persist_seen_ci()
             except Exception as e:
                 print(f"scan error: {e}", file=sys.stderr)
             passes += 1
