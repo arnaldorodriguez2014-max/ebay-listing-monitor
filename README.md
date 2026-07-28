@@ -36,6 +36,7 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Celebi V 245/264** — Fusion Strike alternate full art (the only Celebi V in the set)
 - **Giratina V 186/196** — Lost Origin alternate full art (not the regular V or any VSTAR)
 - **Mew ex 232/091** — Paldean Fates "Bubble Mew" Special Illustration Rare (not the 216/091 Shiny)
+- **Mew ex 347/190** — the **Japanese** "Bubble Mew" SAR (Shiny Treasure ex / sv4a), counterpart of 232/091
 
 > Language note: Pokémon watches use `language: any`, not `english`. Unlike One Piece (where
 > a card shares one number across languages, so `english` usefully filters), a Pokémon card's

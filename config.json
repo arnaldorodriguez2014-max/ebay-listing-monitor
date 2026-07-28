@@ -202,6 +202,26 @@
       "language": "any",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "Mew ex 347/190 SAR (Shiny Treasure ex, JP)",
+      "_note": "Pokemon, Japanese. The Japanese counterpart of the English 232/091 'Bubble Mew' — Shiny Treasure ex (sv4a) Mew ex 347/190 SAR (Special Art Rare). Identify by the full number 347/190 ('347190', unique to this card); a second match_any signature catches bare '#347' titles when paired with the set + SAR/bubble descriptor. Require 'mew ex' (not bare 'mew', which substring-hits 'mewtwo', also excluded). language 'any' because the Japanese-specific number already gates it and most listings are CJK/Japanese-tagged. Verified offline: 8/8 real titles matched (incl. CJK + graded), 8/8 confusables (Mewtwo, English 232/091, other set Mew ex, sealed/lot/bulk, extended-art case) rejected.",
+      "queries": [
+        "mew ex 347/190 sar shiny treasure",
+        "pokemon mew ex 347/190 japanese sar",
+        "mew ex bubble mew 347/190 shiny treasure ex",
+        "japanese mew ex sar shiny treasure 347/190",
+        "mew ex 347/190 sv4a special art rare"
+      ],
+      "match_any": [
+        ["mew ex", "347/190"],
+        ["mew ex", "347", ["shiny treasure", "sv4a", "sv 4a"], ["sar", "special art", "bubble mew", "soap bubble"]]
+      ],
+      "exclude": ["mewtwo"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "language": "any",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }
