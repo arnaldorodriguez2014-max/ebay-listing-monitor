@@ -1057,10 +1057,14 @@ def send_discord(webhook_url, watch_name, listing, grade,
                  event="new", old_price_str=None, drop_pct=None, market_price=None,
                  market_kind="sold"):
     label = GRADE_LABELS.get(grade, grade)
-    # Be explicit about what the comparison is against: real recent sales, or just
-    # what comparable listings are currently ASKING (a weaker signal).
-    ref_word = "market" if market_kind == "sold" else "asking"
-    ref_field = "Market (recent sold)" if market_kind == "sold" else "Typical asking (active)"
+    # Be explicit about what the comparison is against: real recent sales, a manually
+    # set reference, or just what comparable listings are currently ASKING (weakest).
+    if market_kind == "sold":
+        ref_word, ref_field = "market", "Market (recent sold)"
+    elif market_kind == "manual":
+        ref_word, ref_field = "reference", "Reference (set)"
+    else:
+        ref_word, ref_field = "asking", "Typical asking (active)"
     emoji = GRADE_EMOJI.get(grade, "•")
     company = GRADE_COMPANY.get(grade, "—")
     price = listing.get("price_str") or "N/A"
@@ -1256,6 +1260,13 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                 refs[g] = (market_prices[g], "sold")
             elif asking_ref.get(g) is not None:
                 refs[g] = (asking_ref[g], "ask")
+        # Per-watch manual override: pin the reference for a grade to a fixed value
+        # (e.g. {"ungraded": 75}) when the computed asking p25 runs high and pings too
+        # much. Takes precedence over sold/asking; shown as "Reference (set)".
+        for g, val in (watch.get("reference_override") or {}).items():
+            gk = g.lower().replace(" ", "")
+            if val is not None and gk in wanted:
+                refs[gk] = (float(val), "manual")
         to_seed = []          # brand-new items to bulk-insert
         price_updates = []    # (price, price_str, item_id) baselines / post-drop
         refresh_ids = []      # seen items observed this scan (refresh last_seen)

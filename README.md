@@ -290,6 +290,12 @@ Tune in `config.json`: `below_market_pct`, `below_market_floor` (both per-watch 
   bucket before a reference is computed at all, so a thin market can't fake a "deal".
 - `below_ask_pct` (default `10`, per-watch overridable) — how far under the asking
   reference a listing must be. Wider than the sold threshold because asks are noisier.
+- `reference_override` (per-watch) — pin the reference for a grade to a fixed value,
+  e.g. `"reference_override": {"ungraded": 75}`, when the computed asking percentile
+  runs high and pings too much. Takes precedence over sold/asking and shows as
+  **Reference (set)** in the alert. Below-market then fires only for prices in
+  `[value × below_market_floor, value × (1 − below_ask_pct))` (so at $75 with the
+  defaults, ~$37.50–$67.50).
 
 ## Price-drop alerts
 

@@ -156,6 +156,8 @@
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
       "_language_note": "language 'any' (not 'english'): unlike One Piece (same number across languages), the English Pokemon alt-art number is unique to the English set — the Japanese print has a different number — so the number already gates language, and 'english' would wrongly DROP legit 'English NOT Japanese'-style titles.",
       "language": "any",
+      "_reference_override_note": "Pin the ungraded reference to $75. The computed asking p25 ran ~$84, which flagged the many $70-80 listings as 'below market' and pinged too much. At $75 the below-ask threshold is ~$67.50 (75 x (1 - below_ask_pct)), so only genuinely cheap copies alert. psa10 keeps its computed reference.",
+      "reference_override": {"ungraded": 75},
       "min_price": null,
       "max_price": null
     },

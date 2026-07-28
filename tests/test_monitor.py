@@ -298,6 +298,21 @@ ok("CAD listing alerts as new", any(r[1] == "cad1" for r in scad))
 cad_below = conn.execute("SELECT below_alerted FROM seen WHERE item_id='cad1'").fetchone()[0]
 ok("CAD not flagged below USD market", cad_below == 0)
 
+print("== reference_override pins the below-market reference ==")
+# Pin ungraded ref to 75: below-market fires only in [75*floor, 75*(1-below_pct)) = [37.5, 67.5).
+OW = {"name": "OV", "require": ["op05-119"], "grades": ["ungraded"], "language": "english",
+      "reference_override": {"ungraded": 75}}
+OCFG = {"discord_webhook_url": "https://discord.test/wh", "ebay_domain": "www.ebay.com", "watches": [OW]}
+m.get_market_prices = lambda conn_, d, w, g, **k: {"ungraded": None}    # no sold; override drives it
+conn.execute("INSERT OR IGNORE INTO seen(watch,item_id,grade,first_seen,price,price_str,last_seen) "
+             "VALUES('OV','ovseed','ungraded','t',999,'$999','2026-07-01')"); conn.commit()
+m.fetch_all = lambda d, w, **k: [L("ovhi", "$70.00", 70.0), L("ovlo", "$60.00", 60.0)]
+sends.clear(); m.scan_once(OCFG, conn)
+ok("override: $60 flagged below pinned $75 ref",
+   conn.execute("SELECT below_alerted FROM seen WHERE item_id='ovlo'").fetchone()[0] == 1)
+ok("override: $70 NOT below (>= $67.50)",
+   conn.execute("SELECT below_alerted FROM seen WHERE item_id='ovhi'").fetchone()[0] == 0)
+
 print("== per-grade market (graded slab priced against its own bucket) ==")
 # A PSA 10 listing is flagged below-market only against the PSA 10 sold median,
 # and is unaffected by the ungraded median.
