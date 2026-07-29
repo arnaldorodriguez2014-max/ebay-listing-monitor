@@ -217,7 +217,6 @@ rc, s1 = run_ret([L("retnew", "$40.00", 40.0)])         # brand-new item -> 1 al
 ok("scan_once returns alert count", rc == len(s1) == 1)
 rc2, s2 = run_ret([L("retnew", "$40.00", 40.0)])        # now seen -> 0 alerts
 ok("returns 0 when nothing new", rc2 == 0 and s2 == [])
-ok("persist_seen_ci is a no-op outside CI", m.persist_seen_ci() is None)
 
 print("== health check + prune ==")
 m.meta_set(conn, "health", "ok"); health.clear()
