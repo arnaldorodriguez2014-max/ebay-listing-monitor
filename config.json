@@ -218,6 +218,40 @@
       "language": "any",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "Rayquaza 3/17 Holo (POP Series 1)",
+      "_note": "Pokemon vintage (2004 POP Series 1 promo, Cosmos Holo Rare). Identify by number 3/17 + the set (pop series / pop 1). 3/17 normalizes to '317', a short substring that collides with e.g. 13/17 ('1317') and 3/170 ('3170'), so pairing with 'pop series' is required for precision. 3/17 IS inherently the holo card (no non-holo print), so we don't require the word 'holo' (which would also match 'non-holo' via substring and hurt recall) — instead we exclude 'non holo' to drop any mislabels. Verified offline: 7/7 real titles matched (incl. terse + PSA 10), 5/5 confusables (non-holo, 13/17, 3/170, Charizard 3/17, proxy) rejected. NOTE: PSA 8/9 (common for vintage) classify as other_graded and won't alert under the house grade set.",
+      "queries": [
+        "rayquaza 3/17 pop series 1 holo",
+        "pokemon rayquaza 3/17 holo pop series 1",
+        "rayquaza 3/17 holo rare pop series 1 promo",
+        "2004 pokemon pop series 1 rayquaza 3/17 holo"
+      ],
+      "require": ["rayquaza", "3/17", ["pop series", "pop 1"]],
+      "exclude": ["non holo"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "language": "any",
+      "min_price": null,
+      "max_price": null
+    },
+    {
+      "name": "Rayquaza EX 123/124 Full Art (Dragons Exalted)",
+      "_note": "Pokemon vintage (2012 B&W Dragons Exalted, Rayquaza-EX Full Art Ultra Rare). Identify by number 123/124 ('123124', unique to the full art) — the regular Rayquaza EX is 85/124. match_any Sig 1 = rayquaza + full number; Sig 2 catches the common 'Rayquaza EX 123 Full Art' phrasing (bare 123 without /124) by pairing it with 'full art' + 'dragons exalted' so the bare number can't over-match. Verified offline: 6/6 real titles matched, 6/6 confusables (regular 85/124, Roaring Skies full art, sealed/lot, extended-art case) rejected. NOTE: PSA 8/9 (common for vintage) classify as other_graded and won't alert under the house grade set.",
+      "queries": [
+        "rayquaza ex 123/124 dragons exalted full art",
+        "pokemon rayquaza ex 123/124 full art dragons exalted",
+        "rayquaza ex 123 full art dragons exalted",
+        "2012 rayquaza ex 123/124 dragons exalted full art holo"
+      ],
+      "match_any": [
+        ["rayquaza", "123/124"],
+        ["rayquaza", "123", ["full art", "fullart"], ["dragons exalted", "dragonsexalted"]]
+      ],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "language": "any",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }
