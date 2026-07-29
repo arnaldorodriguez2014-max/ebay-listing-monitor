@@ -33,7 +33,6 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Luffy P-099 (Event Pack Vol. 8)** — any language (JP promo)
 
 **Pokémon** (`language: any` — see note):
-- **Celebi V 245/264** — Fusion Strike alternate full art (the only Celebi V in the set)
 - **Giratina V 186/196** — Lost Origin alternate full art (not the regular V or any VSTAR)
 - **Mew ex 232/091** — Paldean Fates "Bubble Mew" Special Illustration Rare (not the 216/091 Shiny)
 - **Mew ex 347/190** — the **Japanese** "Bubble Mew" SAR (Shiny Treasure ex / sv4a), counterpart of 232/091
