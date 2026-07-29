@@ -27,7 +27,6 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Luffy OP05-119 SEC (Alt / Manga Art)** — SEC only (min_price filters the base card)
 - **Nami OP06-101 SP Alt Art (500 Years)** — also catches the OP07-101 numbering
 - **Chopper ST01-006 1st Anniversary** — also catches the "#006" numbering
-- **Nami OP15-086 Alt Art** — alt art only (not the base SR foil)
 - **Luffy OP05-060 PSA Magazine Promo** — the PSA Magazine Exclusive promo only
 - **Nami OP01-016 Gift Collection 2023** — the Gift Collection 2023 promo
 - **Luffy P-099 (Event Pack Vol. 8)** — any language (JP promo)
