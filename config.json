@@ -201,6 +201,23 @@
       "language": "any",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "Rayquaza V Alt Art 194/203 (Evolving Skies)",
+      "_note": "Pokemon. Identify by number 194/203 ('194203', unique to the V alt art) — NOT by 'rayquaza v', whose norm 'rayquazav' is a prefix of 'rayquazavmax'. The number cleanly separates it from the (also famous) Rayquaza VMAX Alt Art 218/203, the regular V 110/203, VMAX 111/203, and gold VMAX 217/203, so no 'vmax' exclude is needed (which would wrongly drop 'not VMAX' clarification listings). Verified offline: 9/9 real titles matched, 10/10 confusables (VMAX alt 218, regular V/VMAX, gold VMAX, VSTAR, sealed/jumbo/lot, extended-art case, other-Eeveelution alt art) rejected.",
+      "queries": [
+        "rayquaza v 194/203 alt art",
+        "rayquaza v 194/203 evolving skies alternate art",
+        "pokemon rayquaza v 194/203 alt art evolving skies",
+        "rayquaza v alt art evolving skies swsh07",
+        "rayquaza v 194/203 alternate full art"
+      ],
+      "require": ["rayquaza", "194/203"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "_language_note": "language 'any': the English 194/203 number is unique to the English set (the Japanese Rayquaza V SAR from Blue Sky Stream has a different number), so the number gates language and 'english' would drop legit 'English NOT Japanese' titles.",
+      "language": "any",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }
