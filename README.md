@@ -25,7 +25,6 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Luffy ST26-005 SP** — SP only (min_price filters out the cheap base card)
 - **Sanji OP10-005 Flagship Promo** — any language (JP/Asia promo), Flagship-only
 - **Luffy OP05-119 SEC (Alt / Manga Art)** — SEC only (min_price filters the base card)
-- **Nami OP06-101 SP Alt Art (500 Years)** — also catches the OP07-101 numbering
 - **Chopper ST01-006 1st Anniversary** — also catches the "#006" numbering
 - **Luffy OP05-060 PSA Magazine Promo** — the PSA Magazine Exclusive promo only
 - **Nami OP01-016 Gift Collection 2023** — the Gift Collection 2023 promo
