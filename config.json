@@ -25,18 +25,6 @@
       "max_price": null
     },
     {
-      "name": "Sanji OP10-005 Flagship Promo (JP)",
-      "queries": [
-        "sanji op10-005 flagship",
-        "sanji op10-005 flagship battle promo"
-      ],
-      "require": ["op10-005", "flagship"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
-      "language": "any",
-      "min_price": null,
-      "max_price": null
-    },
-    {
       "name": "Luffy OP05-119 SEC (Alt / Manga Art)",
       "queries": [
         "luffy op05-119 manga art",
@@ -73,19 +61,6 @@
         "one piece luffy op05-060 magazine"
       ],
       "require": ["op05-060", "magazine"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
-      "language": "english",
-      "min_price": null,
-      "max_price": null
-    },
-    {
-      "name": "Nami OP01-016 Gift Collection 2023",
-      "queries": [
-        "nami op01-016 gift collection",
-        "nami op01-016 gift collection 2023",
-        "one piece nami op01-016 gift"
-      ],
-      "require": ["op01-016", "gift collection"],
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
       "language": "english",
       "min_price": null,
