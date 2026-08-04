@@ -194,24 +194,6 @@
       "language": "any",
       "min_price": null,
       "max_price": null
-    },
-    {
-      "name": "Umbreon & Darkrai GX SM241 (Tag Team, SM Promo)",
-      "_note": "Pokemon. Tag Team GX Full Art SM Black Star Promo (SMP), from the 2020 Tag Team Powers Collection. Identify by 'sm241' + both Pokemon names, which separates it from the Unified Minds prints of the same pair (125/236, 208/236 full art, 240/236 rainbow). match_any Sig 2 also catches promo listings that omit the number by pairing the names with 'black star promo' (unique to the promo; UM is a main set). Verified offline: 7/7 real titles matched, 7/7 confusables (UM 125/208/240, other Umbreon/Darkrai cards, sealed, extended-art case) rejected.",
-      "queries": [
-        "umbreon darkrai gx sm241 tag team",
-        "umbreon & darkrai gx sm241 black star promo",
-        "pokemon umbreon darkrai tag team gx sm241 full art",
-        "umbreon darkrai gx sm241 tag team powers collection"
-      ],
-      "match_any": [
-        ["umbreon", "darkrai", "sm241"],
-        ["umbreon", "darkrai", "black star promo"]
-      ],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
-      "language": "any",
-      "min_price": null,
-      "max_price": null
     }
   ]
 }
