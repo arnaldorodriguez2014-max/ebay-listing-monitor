@@ -38,22 +38,6 @@
       "max_price": null
     },
     {
-      "name": "Chopper ST01-006 1st Anniversary",
-      "queries": [
-        "chopper st01-006 1st anniversary",
-        "tony chopper st01-006 anniversary promo",
-        "tony chopper 1st anniversary set 006"
-      ],
-      "match_any": [
-        ["st01-006", ["1st anni", "first anniversary"]],
-        [["chopper"], ["1st anni", "first anniversary"]]
-      ],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
-      "language": "english",
-      "min_price": null,
-      "max_price": null
-    },
-    {
       "name": "Luffy OP05-060 PSA Magazine Promo",
       "queries": [
         "luffy op05-060 psa magazine",
