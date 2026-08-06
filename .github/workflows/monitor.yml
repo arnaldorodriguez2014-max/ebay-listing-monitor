@@ -41,6 +41,9 @@ jobs:
         run: python ebay_monitor.py --loop-for-minutes 50
 
       - name: Persist seen listings (only when changed)
+        # always(): if the loop overruns the job timeout (or the run step errors), still
+        # commit the seen.db already written to disk, so those alerts aren't re-fired.
+        if: always()
         run: |
           if [ -z "$(git status --porcelain seen.db)" ]; then
             echo "No new listings; seen.db unchanged."

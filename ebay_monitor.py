@@ -144,16 +144,18 @@ def _build_session():
 def get_session(domain: str):
     global _SESSION
     if _SESSION is None:
-        with _SESSION_LOCK:                 # double-checked: prime exactly once
+        with _SESSION_LOCK:                 # double-checked: build + prime exactly once
             if _SESSION is None:
-                _SESSION = _build_session()
-                prime_session(domain)
+                s = _build_session()
+                prime_session(domain, s)    # prime BEFORE publishing, so concurrent
+                _SESSION = s                # workers never see a cookie-less session
     return _SESSION
 
 
-def prime_session(domain: str):
+def prime_session(domain: str, session=None):
+    s = session if session is not None else _SESSION
     try:
-        _SESSION.get(f"https://{domain}/", timeout=25)
+        s.get(f"https://{domain}/", timeout=25)
     except Exception as e:
         print(f"session prime warning: {e}", file=sys.stderr)
 
@@ -186,10 +188,20 @@ _GRADED_HINT = re.compile(
 # immediately followed by a grade number ("ACE 10", "TAG 9.5", "ARS 10"). Bare
 # "Portgas D. Ace" / "with tag" stay ungraded.
 _GRADED_NUM = re.compile(r"\b(?:ACE|TAG|ARS)\s*(?:10|\d(?:\.\d)?)\b", re.IGNORECASE)
+# Aspirational phrasing on RAW cards ("ready for PSA grading", "perfect for BGS") names
+# a grader as a selling point, not the slab. Strip the grader in that context so the
+# card stays 'ungraded' instead of being read as graded (and dropped from raw watches).
+_ASPIRE_GRADE = re.compile(
+    r"\b(?:ready|perfect|great|prepped|prime)\s+(?:for|to)\s+"
+    r"(?:get\s+|be\s+|send\s+(?:in\s+|off\s+)?(?:for\s+|to\s+)?|have\s+|grade\s+|grading\s+)?"
+    r"(?:" + "|".join(GRADING_COMPANIES) + r")\b",
+    re.IGNORECASE,
+)
 
 
 def classify_grade(title: str) -> str:
     """Return a bucket key: 'psa10', 'bgs10', 'bgs9.5', 'other_graded', or 'ungraded'."""
+    title = _ASPIRE_GRADE.sub(" ", title)
     t = title.upper()
     if _PSA10.search(t):
         return "psa10"
@@ -206,17 +218,21 @@ def classify_grade(title: str) -> str:
 # Language detection (English-only by default)
 # ---------------------------------------------------------------------------
 
-# CJK / full-width characters -> definitely a Japanese/Chinese/Korean listing.
-_CJK = re.compile(r"[　-〿぀-ヿ㐀-䶿一-鿿＀-￯]")
+# CJK / full-width chars incl. Hangul -> definitely a Japanese/Chinese/Korean listing.
+_CJK = re.compile(r"[　-〿぀-ヿ㐀-䶿一-鿿ᄀ-ᇿ㄰-㆏가-힯＀-￯]")
 _LANG_JP = re.compile(r"\b(japanese|japan|jpn|jp)\b", re.IGNORECASE)
 _LANG_CN = re.compile(r"\b(chinese|china|chn|cn)\b", re.IGNORECASE)
 _LANG_KR = re.compile(r"\b(korean|korea|kor)\b", re.IGNORECASE)
 _LANG_EN = re.compile(r"\b(english|eng)\b", re.IGNORECASE)
 # Sellers of English cards often write "English NOT Japanese" / "not a Japan import";
 # the bare foreign word would otherwise flip the listing to that language and get it
-# dropped by an English-only watch. Strip negated mentions before detecting.
+# dropped by an English-only watch. Strip negated mentions before detecting. The
+# trailing group extends the strip across an ENUMERATED run ("not Japanese Chinese",
+# "not Japanese/Korean") so a trailing language can't survive and win detection.
+_NEG_LW = r"(?:japanese|japan|jpn|jp|chinese|china|chn|cn|korean|korea|kor)"
 _NEG_LANG = re.compile(
-    r"\bno[tn]\s+(?:an?\s+)?(?:japanese|japan|jpn|jp|chinese|china|chn|cn|korean|korea|kor)\b"
+    r"\bno[tn]\s+(?:an?\s+|from\s+)?" + _NEG_LW
+    + r"(?:\s*(?:[/,&]|or|nor|and)?\s*" + _NEG_LW + r")*\b"
     r"|\bnon[-\s]?(?:japanese|japan|chinese|china|korean|korea)\b",
     re.IGNORECASE,
 )
@@ -295,6 +311,14 @@ _CARDNUM_RE = re.compile(r"\b[a-z]{2,4}\d{1,2}-\d{2,4}\b", re.IGNORECASE)
 # Pokemon-style collector numbers (e.g. "232/091"). Two DIFFERENT numbers sharing the
 # same set total (denominator) is a same-set multi-card lot ("232/091 + 216/091").
 _PKMN_NUM_RE = re.compile(r"\b(\d{1,3})/(\d{2,3})\b")
+# A sibling number named in a comparison/negation ("... not the VMAX 218/203",
+# "not 130/196", "vs 85/124") is disambiguation on a SINGLE card, not a lot. Strip it
+# before counting so number-identified watches aren't dropped by is_lot.
+_CMP_NUM_RE = re.compile(
+    r"\b(?:not|no|vs\.?|versus|rather than|instead of|isn'?t|aren'?t)\b"
+    r"(?:\s+\w+){0,3}?\s+\d{1,3}/\d{2,3}\b",
+    re.IGNORECASE,
+)
 
 
 def is_lot(title: str) -> bool:
@@ -303,6 +327,7 @@ def is_lot(title: str) -> bool:
     nums = {m.lower() for m in _CARDNUM_RE.findall(title)}
     if len(nums) >= 2:
         return True
+    title = _CMP_NUM_RE.sub(" ", title)   # drop "not the <sibling>/<denom>" comparisons
     by_denom = {}
     for num, den in _PKMN_NUM_RE.findall(title):
         by_denom.setdefault(den, set()).add(num)
@@ -322,7 +347,7 @@ _BULK_SEALED_RE = re.compile(
     r"build ?(?:&|and) ?battle|"
     r"master set|complete set|master collection|cards? collection|"
     r"bulk|playset|"
-    r"lot of \d+|\d+ ?cards? lot|cards? lot|lot|"
+    r"lot of \d+|\d+ ?cards? lot|cards? lot|(?<!not a )lot|"
     r"bundle|jumbo|oversized"
     r")\b",
     re.IGNORECASE,
@@ -601,8 +626,9 @@ def fetch_listings(domain: str, query: str, max_attempts: int = 4, sold: bool = 
             price_str, price_low, currency = parse_price(price_el.get_text(" ", strip=True))
         else:
             # fallback: first amount in the card text — survives price-class renames.
-            # Keep any leading currency marker (C $, US $, £, €) so it's classified.
-            fm = re.search(r"(?:C\s*|US\s*|AU\s*)?[$£€][\d,]+(?:\.\d{2})?", li_text)
+            # Keep any leading currency marker (C $, US $, £, €, ¥, ₩) so detect_currency
+            # still flags non-USD — otherwise a yen/won price would slip past the USD guard.
+            fm = re.search(r"(?:C\s*|US\s*|AU\s*)?[$£€¥₩][\d,]+(?:\.\d{2})?", li_text)
             price_str, price_low, currency = parse_price(fm.group(0)) if fm else ("N/A", None, None)
 
         img_el = li.select_one("img")
@@ -1054,7 +1080,7 @@ def _listing_type(listing):
 
 def send_discord(webhook_url, watch_name, listing, grade,
                  event="new", old_price_str=None, drop_pct=None, market_price=None,
-                 market_kind="sold"):
+                 market_kind="sold", is_deal=None):
     label = GRADE_LABELS.get(grade, grade)
     # Be explicit about what the comparison is against: real recent sales, a manually
     # set reference, or just what comparable listings are currently ASKING (weakest).
@@ -1074,7 +1100,14 @@ def send_discord(webhook_url, watch_name, listing, grade,
     # Price comparison (market_price is this listing's grade reference — a recent-sold
     # median when available, otherwise a low percentile of active asking prices).
     vs_pct = round((cur_low - market_price) / market_price * 100) if (market_price and cur_low is not None) else None
-    below = bool(market_price and cur_low is not None and cur_low < market_price)
+    # The "below" badge/styling must reflect the caller's actual deal decision (which
+    # honors below_floor + below_ask_pct), not a naive cur < reference — otherwise a
+    # listing a hair under the reference gets a misleading "🔥 below" badge. Fall back
+    # to the naive test only when the caller doesn't pass one (e.g. status embeds).
+    if is_deal is None:
+        below = bool(market_price and cur_low is not None and cur_low < market_price)
+    else:
+        below = bool(is_deal)
 
     if event == "below_market":
         color = 0xF39C12  # amber "deal"
@@ -1318,10 +1351,13 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                     continue
                 refresh_ids.append(item_id)   # observed today -> keep alive from pruning
                 if ref_price is None or seeding:
-                    # baseline the price (migration / reseed) — never alert
+                    # baseline the price (migration / reseed) — never alert. Preserve a
+                    # prior below-market flag (sticky): a jittery/absent reference this
+                    # pass must not clear it and re-fire a below-market ping later.
                     if cur is not None:
-                        price_updates.append((cur, cur_str, 1 if below else 0, item_id))
-                        seen_prices[item_id] = (cur, cur_str, 1 if below else 0)
+                        nb = 1 if (below or ref_below) else 0
+                        price_updates.append((cur, cur_str, nb, item_id))
+                        seen_prices[item_id] = (cur, cur_str, nb)
                     continue
                 if cur is None:
                     continue
@@ -1335,18 +1371,21 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                         try:
                             send_discord(webhook, name, lst, grade, event="drop",
                                          old_price_str=old_str, drop_pct=pct, market_price=mkt,
-                                         market_kind=mkt_kind)
+                                         market_kind=mkt_kind, is_deal=below)
                         except Exception as e:
                             print(f"[{ts}] [{name}] discord error: {e}", file=sys.stderr)
                             continue  # keep old ref; retry next pass
                         # Print AFTER the try: a logging/console-encoding error here
                         # must not look like a send failure and undo a delivered alert.
                         print(f"[{ts}] [{name}] price drop: {old_str} -> {cur_str} ({pct}%) {lst['url']}")
+                    # Preserve a prior below-market flag (sticky): a drop must never
+                    # clear it (that would let a jittery reference re-fire below-market).
+                    nb = 1 if (below or ref_below) else 0
                     conn.execute("UPDATE seen SET price=?, price_str=?, last_seen=?, below_alerted=? "
                                  "WHERE watch=? AND item_id=?",
-                                 (cur, cur_str, today, 1 if below else 0, name, item_id))
+                                 (cur, cur_str, today, nb, name, item_id))
                     conn.commit()
-                    seen_prices[item_id] = (cur, cur_str, 1 if below else 0)
+                    seen_prices[item_id] = (cur, cur_str, nb)
                     drop_count += 1
                     time.sleep(0.25)
                     continue
@@ -1365,7 +1404,7 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                     else:
                         try:
                             send_discord(webhook, name, lst, grade, event="below_market",
-                                         market_price=mkt, market_kind=mkt_kind)
+                                         market_price=mkt, market_kind=mkt_kind, is_deal=below)
                         except Exception as e:
                             print(f"[{ts}] [{name}] discord error: {e}", file=sys.stderr)
                             continue
@@ -1399,7 +1438,7 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                       f"{' BELOW-MKT' if below else ''} {lst['url']} (no webhook configured — not sent)")
             else:
                 try:
-                    send_discord(webhook, name, lst, grade, market_price=mkt, market_kind=mkt_kind)
+                    send_discord(webhook, name, lst, grade, market_price=mkt, market_kind=mkt_kind, is_deal=below)
                 except Exception as e:
                     print(f"[{ts}] [{name}] discord error: {e}", file=sys.stderr)
                     seen_prices.pop(item_id, None)  # don't mark seen so we retry next pass
@@ -1487,7 +1526,12 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         match_broken = bool(watches) and total_scraped > 0 and total_matched == 0
         zero_match_scans = int(cfg.get("zero_match_alert_scans", 3))
         streak = int(meta_get(conn, "zero_match_streak", "0") or "0")
-        streak = streak + 1 if match_broken else 0
+        if match_broken:
+            streak += 1
+        elif not scrape_broken:
+            streak = 0
+        # scrape_broken: leave streak unchanged (a transient 0-scraped pass must
+        # NOT wipe match-failure evidence; health stays latched via scrape_broken)
         meta_set(conn, "zero_match_streak", streak)
 
         healthy = not (scrape_broken or (match_broken and streak >= zero_match_scans))

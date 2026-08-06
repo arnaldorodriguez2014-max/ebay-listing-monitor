@@ -61,6 +61,10 @@ check("PSA GEM MT 10", m.classify_grade("Charizard PSA GEM MT 10 020/073"), "psa
 check("PSA Grade 10", m.classify_grade("Celebi V 245/264 PSA Grade 10"), "psa10")
 check("PSA GEM MINT 10", m.classify_grade("Mew ex 232/091 PSA GEM MINT 10"), "psa10")
 check("PSA Graded 10 lot stays other", m.classify_grade("PSA Graded 10 Cards Lot"), "other_graded")
+# aspirational grading on RAW cards must stay ungraded (not read as graded)
+check("ready for PSA -> raw", m.classify_grade("Charizard 020/073 NM Ready for PSA Grading"), "ungraded")
+check("perfect for PSA -> raw", m.classify_grade("Luffy OP05-119 Mint Perfect for PSA"), "ungraded")
+check("send in for BGS -> raw", m.classify_grade("Rayquaza V 194/203 prime to send in for BGS"), "ungraded")
 
 print("== language ==")
 check("japanese word", m.title_language("Luffy ST26-005 Japanese"), "japanese")
@@ -69,6 +73,13 @@ check("unknown", m.title_language("Luffy ST26-005 Foil"), "unknown")
 ok("en keeps unknown", m.passes_language("Luffy ST26-005 Foil", "english"))
 ok("en drops japanese", not m.passes_language("Luffy Japanese", "english"))
 ok("any keeps japanese", m.passes_language("Luffy Japanese", "any"))
+# enumerated/negated language run must NOT flip an English card to a foreign language
+check("english NOT jp+cn -> english", m.title_language("Luffy OP05-119 English NOT Japanese Chinese"), "english")
+check("english NOT jp/kr -> english", m.title_language("Charizard English NOT Japanese/Korean"), "english")
+check("not from japan -> english", m.title_language("Charizard English not from Japan"), "english")
+ok("enumerated negation passes english", m.passes_language("Luffy English NOT Japanese Chinese", "english"))
+ok("real japanese still dropped", not m.passes_language("Luffy from Japan", "english"))
+check("korean hangul -> cjk", m.title_language("루피 카드 OP05-119"), "cjk")
 # negated foreign mentions ("English NOT Japanese") must not flip an English card
 check("English NOT Japanese", m.title_language("Luffy OP05-119 English NOT Japanese"), "english")
 check("not a Japan import", m.title_language("Luffy OP05-119 not a Japan import English"), "english")
@@ -96,6 +107,10 @@ ok("single card not lot", not m.is_lot("Bandai OP15 Luffy ST26-005 SP 2026"))
 ok("pokemon two-number lot", m.is_lot("Mew ex 232/091 + 216/091 two-card lot"))
 ok("pokemon single not lot", not m.is_lot("Mew ex 232/091 Paldean Fates SIR"))
 ok("pop-report ratio not lot", not m.is_lot("Mew ex 232/091 PSA 10 POP 12/500"))
+# a single card naming a sibling number in a comparison is NOT a lot
+ok("sibling comparison not lot", not m.is_lot("Rayquaza V 194/203 not the VMAX 218/203"))
+ok("paren sibling not lot", not m.is_lot("Giratina V 186/196 (not 130/196 regular)"))
+ok("real 2-number lot still lot", m.is_lot("Mew ex 232/091 + 216/091 two-card lot"))
 
 print("== is_bulk_or_sealed (word-boundary; no substring misfire) ==")
 ok("booster box", m.is_bulk_or_sealed("Celebi V 245/264 Fusion Strike Booster Box Sealed"))
@@ -107,6 +122,8 @@ ok("Holo TCG single (not sealed)", not m.is_bulk_or_sealed("Giratina V 186/196 L
 ok("Holo Trading Card single", not m.is_bulk_or_sealed("Celebi V 245/264 Fusion Strike Holo Trading Card"))
 ok("etb substring not misfire", not m.is_bulk_or_sealed("Pokemon trumpetbandit Celebi V 245/264"))
 ok("plain single not sealed", not m.is_bulk_or_sealed("Mew ex 232/091 Paldean Fates SIR NM"))
+ok("'not a lot' single not sealed", not m.is_bulk_or_sealed("Luffy OP05-119 SEC single card not a lot"))
+ok("real bare-word lot still caught", m.is_bulk_or_sealed("Giratina V 186/196 + Palkia lot"))
 
 print("== extended-art-case merch exclude ==")
 ok("extended artwork case excluded",
@@ -286,6 +303,12 @@ ok("no ping when reference missing", not any(r[0] == "below_market" for r in run
 MKT["v"] = 120.0                           # reference returns; item below again
 ok("no DUPLICATE below-market on re-cross", not any(r[0] == "below_market" for r in run([L("b2", "$98.00", 98.0)])))
 ok("below_alerted stays sticky", conn.execute("SELECT below_alerted FROM seen WHERE item_id='b2'").fetchone()[0] == 1)
+# A price DROP must not clear the sticky below flag either (even if the post-drop price
+# isn't below a jittery/low reference this pass) -- otherwise a later below re-fires.
+MKT["v"] = 94.0                             # $90 is NOT below 94 (needs < 89.3), so 'below' is False
+sdrop = run([L("b2", "$90.00", 90.0)])     # 98 -> 90 drop fires
+ok("price drop fires on b2", any(r[0] == "drop" and r[1] == "b2" for r in sdrop))
+ok("drop keeps sticky below flag", conn.execute("SELECT below_alerted FROM seen WHERE item_id='b2'").fetchone()[0] == 1)
 MKT["v"] = 100.0
 
 # A CAD-priced listing must NOT be compared against the USD market median (that
