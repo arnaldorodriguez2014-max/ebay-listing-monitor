@@ -1,0 +1,41 @@
+# Render Blueprint for the eBay monitor (alternative to GitHub Actions).
+#
+# Runs the monitor as an always-on Background Worker — a single long-lived process that
+# loops at poll_interval_seconds (config.json) — with seen.db on a persistent disk. This
+# needs NO git-commit persistence and does not depend on GitHub Actions availability.
+#
+# Deploy:  Render Dashboard -> New -> Blueprint -> point at this repo. Then set the
+#          DISCORD_WEBHOOK_URL env var (marked sync:false) in the dashboard (it's secret).
+# Verify syntax against current Render docs — the blueprint schema evolves.
+services:
+  - type: worker                     # always-on background process (paid; no free worker tier)
+    name: ebay-monitor
+    runtime: python
+    plan: starter                    # smallest paid worker; the workload is tiny
+    region: oregon                   # pick the region whose outbound IP you want to test vs eBay
+    buildCommand: pip install -r requirements.txt
+    startCommand: python ebay_monitor.py     # continuous loop at poll_interval_seconds
+    autoDeploy: true
+    envVars:
+      - key: DISCORD_WEBHOOK_URL
+        sync: false                  # set in the dashboard (secret; not in the repo)
+      - key: SEEN_DB_PATH
+        value: /data/seen.db         # persist state on the mounted disk
+      - key: DISABLE_FILE_LOG
+        value: "1"                   # log to stdout (Render captures it); no file growth
+      - key: PYTHONUNBUFFERED
+        value: "1"                   # stream logs live
+    disk:
+      name: monitor-data
+      mountPath: /data
+      sizeGB: 1
+
+# ---------------------------------------------------------------------------------------
+# STEP 0 — test whether eBay blocks Render BEFORE committing to the always-on worker.
+# Temporarily set this worker's startCommand to:  python ebay_monitor.py --dry-run
+# (or create a one-off Job / Cron with that command). --dry-run scrapes every watch and
+# PRINTS matches but sends nothing and writes nothing, so it needs no webhook or disk.
+# Read the logs:
+#   "<N> scraped, <M> matched ..."  with N>0   -> eBay serves Render fine (not blocked)
+#   "0 scraped" / "soft-block persisted" / "Pardon Our Interruption"  -> eBay blocks Render
+# LH_PrefLoc=1 (already in the scraper) forces US-located results regardless of Render's geo.

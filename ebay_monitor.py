@@ -39,8 +39,10 @@ except Exception:  # very old urllib3 layout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(HERE, "config.json")
-DB_PATH = os.path.join(HERE, "seen.db")
-LOG_PATH = os.path.join(HERE, "monitor.log")
+# SEEN_DB_PATH / MONITOR_LOG_PATH let a host (e.g. Render) point state at a persistent
+# disk instead of the repo dir, so no git-commit persistence is needed off GitHub Actions.
+DB_PATH = os.environ.get("SEEN_DB_PATH") or os.path.join(HERE, "seen.db")
+LOG_PATH = os.environ.get("MONITOR_LOG_PATH") or os.path.join(HERE, "monitor.log")
 
 # Keep the log from growing without bound: rotate to monitor.log.1 past this size.
 LOG_MAX_BYTES = 2 * 1024 * 1024
@@ -93,6 +95,10 @@ def _rotate_log_if_large():
 
 
 def enable_file_logging():
+    # On always-on hosts (Render, a VM) set DISABLE_FILE_LOG=1: the platform captures
+    # stdout, and skipping the file avoids unbounded growth in the continuous loop.
+    if os.environ.get("DISABLE_FILE_LOG"):
+        return
     try:
         _rotate_log_if_large()
         f = open(LOG_PATH, "a", encoding="utf-8")

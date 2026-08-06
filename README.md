@@ -84,6 +84,32 @@ The change takes effect on the next scheduled run.
 > on new listings keep it alive; if listings ever go quiet that long, click
 > **Run workflow** once (or push any commit) to re-arm it.
 
+## 🌐 Render deployment (alternative — not affected by GitHub Actions outages)
+
+The monitor also runs as an always-on **Render Background Worker** — a single long-lived
+process that loops at `poll_interval_seconds` — with `seen.db` on a Render **persistent
+disk**. This needs no git-commit persistence and doesn't depend on GitHub Actions. See
+[`render.yaml`](render.yaml) (a deployable Blueprint).
+
+Two small env vars make it Render-ready (defaults unchanged for GitHub/local):
+- `SEEN_DB_PATH` — where to keep `seen.db` (point it at the mounted disk, e.g. `/data/seen.db`).
+- `DISABLE_FILE_LOG=1` — log to stdout (Render captures it) instead of a growing file.
+- `DISCORD_WEBHOOK_URL` — the webhook, set as a dashboard secret.
+
+**First, test whether eBay blocks Render's IP** (before paying for the worker): run
+`python ebay_monitor.py --dry-run` on Render (temporarily, or as a one-off Job/Cron). It
+scrapes every watch and **prints** matches but sends/writes nothing, so it needs no webhook
+or disk. In the logs:
+- `… <N> scraped, <M> matched …` with N > 0 → eBay serves Render fine (**not blocked**).
+- `0 scraped` / `soft-block persisted` / `Pardon Our Interruption` → eBay **is blocking** Render.
+
+> Block-risk note: Render runs on **datacenter IPs** (paid services get a *static* outbound
+> IP). eBay may treat a single static datacenter IP polling frequently more harshly than
+> GitHub's rotating runner IPs, so start with a conservative `poll_interval_seconds`
+> (180–300s) and watch for soft-blocks. `LH_PrefLoc=1` (already in the scraper) forces
+> US-located results regardless of Render's geolocation. A residential IP (home Pi) remains
+> the lowest-block-risk option if Render gets blocked.
+
 ## Local setup (optional / fallback)
 
 ## Setup
