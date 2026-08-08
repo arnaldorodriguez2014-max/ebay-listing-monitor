@@ -38,28 +38,17 @@
       "max_price": null
     },
     {
-      "name": "Luffy OP05-060 PSA Magazine Promo",
+      "name": "Luffy ST10-006 One Piece Day Dallas Promo",
+      "_note": "One Piece. The Monkey D. Luffy (One Piece Day Dallas 2025) ST10-006 Super Rare foil promo (Gear 5, illus. Otton) — a US-event exclusive. Identify by the EVENT (one piece day + dallas) rather than the number, because (a) the regular ST10-006 is the Ultra Deck: The Three Captains starter card (no 'dallas'), and (b) some sellers write just '006' without 'ST10-'. Verified offline: 7/7 real seller titles matched (incl. the '006'-only one), 5/5 confusables (regular ST10-006 starter, non-Luffy Dallas promo, other Luffy card, sealed, lot) rejected.",
       "queries": [
-        "luffy op05-060 psa magazine",
-        "luffy op05-060 magazine exclusive promo",
-        "one piece luffy op05-060 magazine"
+        "luffy st10-006 one piece day dallas",
+        "monkey d luffy one piece day dallas promo st10-006",
+        "one piece day dallas 2025 luffy promo",
+        "luffy st10-006 dallas promo gear 5"
       ],
-      "require": ["op05-060", "magazine"],
+      "require": ["luffy", "one piece day", "dallas"],
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
-      "language": "english",
-      "min_price": null,
-      "max_price": null
-    },
-    {
-      "name": "Luffy P-099 (Event Pack Vol. 8)",
-      "queries": [
-        "luffy p-099 event pack",
-        "monkey d luffy p-099 event pack vol 8",
-        "one piece luffy event pack vol 8 p-099"
-      ],
-      "require": ["p-099", "event pack"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
-      "_language_note": "Event Pack Vol.8 is a Japanese product, so use 'any' — 'english' would drop US/CA listings that tag the card 'Japanese'. 'p-099' is paired with 'event pack' because the bare number normalizes to 'p099', which collides with 'OP09 99'-style titles.",
+      "_language_note": "language 'any': it's an English US-event exclusive (no Japanese 'One Piece Day Dallas' print exists), so the event descriptor gates it; 'english' would risk dropping a listing that mentions 'Japanese' in a comparison.",
       "language": "any",
       "min_price": null,
       "max_price": null

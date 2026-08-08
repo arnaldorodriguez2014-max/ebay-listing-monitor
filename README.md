@@ -24,8 +24,7 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 **One Piece:**
 - **Luffy ST26-005 SP** — SP only (min_price filters out the cheap base card)
 - **Luffy OP05-119 SEC (Alt / Manga Art)** — SEC only (min_price filters the base card)
-- **Luffy OP05-060 PSA Magazine Promo** — the PSA Magazine Exclusive promo only
-- **Luffy P-099 (Event Pack Vol. 8)** — any language (JP promo)
+- **Luffy ST10-006 One Piece Day Dallas Promo** — the 2025 Dallas event exclusive (not the starter-deck ST10-006)
 
 **Pokémon** (`language: any` — see note):
 - **Giratina V 186/196** — Lost Origin alternate full art (not the regular V or any VSTAR)
