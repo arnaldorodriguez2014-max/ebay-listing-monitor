@@ -206,6 +206,22 @@ Add entries to the `watches` array in `config.json`:
 - `allowed_regions` — per-watch region allow-list (canonical `US` / `CA`);
   overrides the top-level default `["US", "CA"]`.
 - `price_drop_pct` / `price_drop_min` — per-watch override of the drop thresholds.
+- `price_alerts` — per-watch list of **absolute price targets that @mention someone
+  on Discord**. Each rule is `{"grade": <bucket, optional>, "below": <USD>, "mention":
+  "<discord id>"}` and fires when a matched listing of that grade is priced strictly
+  **below** the threshold (USD only — foreign-currency listings are never compared).
+  Example — ping a user when a PSA 10 lists under $2,700:
+  ```json
+  "price_alerts": [
+    {"grade": "psa10", "below": 2700, "mention": "209187722575872000"}
+  ]
+  ```
+  A crossing is the *headline* alert for that listing (one message, not a duplicate
+  drop/below-market ping); it pings **once per crossing** and re-arms only after the
+  price rises back above target. Omit `grade` to alert on any grade. The first scan
+  after adding a rule baselines already-below listings silently (no @mention flood).
+  `mention` goes in the message content with `allowed_mentions`, so it actually pings;
+  use a Discord **user** id (right-click → Copy User ID with Developer Mode on).
 
 ## Reliability & maintenance
 

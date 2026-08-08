@@ -973,6 +973,7 @@ def db_connect():
         "CREATE TABLE IF NOT EXISTS seen ("
         "  watch TEXT, item_id TEXT, grade TEXT, first_seen TEXT,"
         "  price REAL, price_str TEXT, last_seen TEXT, below_alerted INTEGER DEFAULT 0,"
+        "  price_alerted INTEGER DEFAULT 0,"
         "  PRIMARY KEY (watch, item_id))"
     )
     conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
@@ -986,6 +987,8 @@ def db_connect():
         conn.execute("ALTER TABLE seen ADD COLUMN last_seen TEXT")
     if "below_alerted" not in cols:
         conn.execute("ALTER TABLE seen ADD COLUMN below_alerted INTEGER DEFAULT 0")
+    if "price_alerted" not in cols:
+        conn.execute("ALTER TABLE seen ADD COLUMN price_alerted INTEGER DEFAULT 0")
     # Baseline last_seen (to first_seen's date) so pruning has a reference.
     conn.execute("UPDATE seen SET last_seen=substr(first_seen,1,10) WHERE last_seen IS NULL")
     conn.commit()
@@ -1011,12 +1014,14 @@ def prune_seen(conn, days):
     return cur.rowcount
 
 
-def mark_seen(conn, watch, item_id, grade, price=None, price_str=None, below_alerted=0):
+def mark_seen(conn, watch, item_id, grade, price=None, price_str=None, below_alerted=0,
+              price_alerted=0):
     now = datetime.now(timezone.utc)
     conn.execute(
-        "INSERT OR IGNORE INTO seen (watch, item_id, grade, first_seen, price, price_str, last_seen, below_alerted) "
-        "VALUES (?,?,?,?,?,?,?,?)",
-        (watch, item_id, grade, now.isoformat(), price, price_str, now.date().isoformat(), below_alerted),
+        "INSERT OR IGNORE INTO seen (watch, item_id, grade, first_seen, price, price_str, last_seen, "
+        "below_alerted, price_alerted) VALUES (?,?,?,?,?,?,?,?,?)",
+        (watch, item_id, grade, now.isoformat(), price, price_str, now.date().isoformat(),
+         below_alerted, price_alerted),
     )
     conn.commit()
 
@@ -1080,7 +1085,7 @@ def _listing_type(listing):
 
 def send_discord(webhook_url, watch_name, listing, grade,
                  event="new", old_price_str=None, drop_pct=None, market_price=None,
-                 market_kind="sold", is_deal=None):
+                 market_kind="sold", is_deal=None, mention=None, alert_threshold=None):
     label = GRADE_LABELS.get(grade, grade)
     # Be explicit about what the comparison is against: real recent sales, a manually
     # set reference, or just what comparable listings are currently ASKING (weakest).
@@ -1125,6 +1130,14 @@ def send_discord(webhook_url, watch_name, listing, grade,
             f"  (−{drop_pct}%)" if drop_pct else "")
         pct_bit = f"  ·  **−{drop_pct}% off**" if drop_pct else ""
         headline = f"## {price}   ~~{old_price_str}~~{pct_bit}\n" if price != "N/A" else ""
+    elif event == "price_alert":
+        # Targeted absolute-threshold alert (e.g. "PSA 10 below $2,700"); always @mentions.
+        color = 0xE74C3C  # red — a watched price target was hit
+        author = f"🔔  Price target hit · {watch_name}"
+        foot = "eBay · price target"
+        content = (f"🔔 **{watch_name}** — {label} · {price}"
+                   + (f" · below {_fmt_price(alert_threshold)} target" if alert_threshold else ""))
+        headline = f"## {price}" + (f"  ·  _{shipping}_" if shipping else "") + "\n" if price != "N/A" else ""
     else:
         color = 0xF39C12 if below else GRADE_COLORS.get(grade, 0x2F3136)
         author = f"🆕  {watch_name}"
@@ -1138,10 +1151,12 @@ def send_discord(webhook_url, watch_name, listing, grade,
     if below:
         deal_line = (f"🔥 **{abs(vs_pct)}% below {ref_word}**\n" if vs_pct is not None
                      else f"🔥 **below {ref_word}**\n")
+    target_line = f"🎯 **below your {_fmt_price(alert_threshold)} target**\n" if alert_threshold else ""
 
     description = (
         f"{headline}"
         f"{deal_line}"
+        f"{target_line}"
         f"{emoji} **{label}**  ·  {company}\n\n"
         f"**[View listing on eBay  ↗]({url})**"
     )
@@ -1176,6 +1191,11 @@ def send_discord(webhook_url, watch_name, listing, grade,
         "content": content,
         "embeds": [embed],
     }
+    # An @mention only pings if it's in the top-level content AND allowed_mentions
+    # permits that user; webhooks otherwise suppress mentions.
+    if mention:
+        payload["content"] = f"<@{mention}> {content}"
+        payload["allowed_mentions"] = {"users": [str(mention)]}
     _post_webhook(webhook_url, payload)
 
 
@@ -1197,6 +1217,45 @@ def price_ok(price_low, watch):
     if hi is not None and price_low > hi:
         return False
     return True
+
+
+def parse_price_alerts(watch):
+    """Normalize a watch's optional `price_alerts` into a list of rules.
+
+    Each config rule is {"grade": <bucket or omitted for any>, "below": <price>,
+    "mention": <Discord user/role id, optional>}. A rule fires (and @mentions) when a
+    matched listing of that grade is priced strictly BELOW `below`. Returns a list of
+    {"grade", "below", "mention"} with grade normalized (or None = any). Malformed
+    rules (no numeric `below`) are dropped silently so one typo can't break the scan.
+    """
+    out = []
+    for r in (watch.get("price_alerts") or []):
+        if not isinstance(r, dict):
+            continue
+        try:
+            below = float(r.get("below"))
+        except (TypeError, ValueError):
+            continue
+        g = r.get("grade")
+        gk = g.lower().replace(" ", "") if isinstance(g, str) and g.strip() else None
+        mention = r.get("mention")
+        mention = str(mention).strip() if mention not in (None, "") else None
+        out.append({"grade": gk, "below": below, "mention": mention})
+    return out
+
+
+def price_alert_hit(rules, grade, price):
+    """Return the first price_alert rule matched by (grade, price), or None.
+
+    A rule matches when its grade is None (any) or equals `grade`, AND `price` is
+    known and strictly below the rule's threshold.
+    """
+    if price is None:
+        return None
+    for r in rules:
+        if (r["grade"] is None or r["grade"] == grade) and price < r["below"]:
+            return r
+    return None
 
 
 def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
@@ -1233,6 +1292,15 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
     if ask_baseline:
         print(f"[{ts}] first scan with a price reference — baselining below-flags silently "
               "(no below-market alerts this pass).")
+    # Same anti-flood guard for price-target @mentions: the first scan after any watch
+    # gains `price_alerts` records the already-below listings silently instead of firing
+    # an @mention for every listing already under target on the site.
+    pa_baseline = ((not dry_run) and (not reseed)
+                   and any(w.get("price_alerts") for w in cfg.get("watches", []))
+                   and meta_get(conn, "pa_baseline_done") != "1")
+    if pa_baseline:
+        print(f"[{ts}] first scan with price_alerts — baselining price-target flags silently "
+              "(no @mention alerts this pass).")
     total_scraped = 0
     total_matched = 0
     total_alerts = 0        # new + drop + below pings this scan (drives CI persistence)
@@ -1255,12 +1323,18 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         # in one query (also serves as the dedup set).
         seen_prices = {row[0]: (row[1], row[2], row[3]) for row in
                        conn.execute("SELECT item_id, price, price_str, below_alerted FROM seen WHERE watch=?", (name,))}
+        # price_alerted flags, parallel to seen_prices (kept separate so the existing
+        # 3-tuple stays untouched). Drives the price-target @mention dedup: ping once per
+        # crossing below target, not every scan while the listing stays under it.
+        pa_flags = {row[0]: (row[1] or 0) for row in
+                    conn.execute("SELECT item_id, price_alerted FROM seen WHERE watch=?", (name,))}
+        price_alerts = parse_price_alerts(watch)
 
         # Seed silently (mark matches seen, no alerts) on a watch's first run, or
         # whenever --reseed is used (e.g. after broadening filters, to avoid a flood
         # of alerts for listings that were already up but newly match).
         seeding = reseed or (not seen_prices and not notify_existing and not dry_run)
-        matched = new_count = drop_count = below_count = 0
+        matched = new_count = drop_count = below_count = pa_count = 0
         lang_pref = watch.get("language", "english")
         require = watch.get("require", [])
         exclude = watch.get("exclude", [])
@@ -1336,6 +1410,11 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
             eff_below_pct = below_pct if mkt_kind == "sold" else below_ask_pct
             below = bool(mkt and cur is not None
                          and mkt * below_floor <= cur < mkt * (1 - eff_below_pct / 100))
+            # Price targets are absolute USD thresholds, but price_low is in the
+            # listing's own currency. Only compare USD (or currency-unknown, treated as
+            # USD like below-market) listings, so a £2,000 / ¥2,000 listing can't
+            # false-trigger a "below $2,700" @mention. price_alert_hit(None) -> no hit.
+            pa_cur = cur if lst.get("currency") in (None, "USD") else None
 
             # ---- already-seen listing: watch for a price drop / below-market ----
             if item_id in seen_prices:
@@ -1348,6 +1427,9 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                         print(f"[DRY][DROP] [{name}] {ref_str or _fmt_price(ref_price)} -> {cur_str} ({pct}%)  {lst['url']}")
                     if below and not ref_below:
                         print(f"[DRY][BELOW] [{name}] {cur_str} vs market ${mkt:,.0f}  {lst['url']}")
+                    _par = price_alert_hit(price_alerts, grade, pa_cur)
+                    if _par and not pa_flags.get(item_id, 0):
+                        print(f"[DRY][TARGET] [{name}] {cur_str} < {_fmt_price(_par['below'])}  {lst['url']}")
                     continue
                 refresh_ids.append(item_id)   # observed today -> keep alive from pruning
                 if ref_price is None or seeding:
@@ -1361,6 +1443,52 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                     continue
                 if cur is None:
                     continue
+                # (0) price target crossed? An absolute per-grade threshold with an
+                # @mention (e.g. "PSA 10 below $2,700"). A crossing is the HEADLINE alert
+                # for this listing this pass: we send the 🔔 ping, baseline the stored
+                # price + below flag (so the same reprice can't also fire a redundant 📉
+                # drop / 🔥 below-market message now or next scan), then continue. The flag
+                # re-arms only when the price later rises back above target — safe to clear
+                # because the threshold is fixed (unlike the jittery below-market ref).
+                pa_rule = price_alert_hit(price_alerts, grade, pa_cur)
+                prior_pa = pa_flags.get(item_id, 0)
+                new_pa = 1 if pa_rule else 0
+                pa_cross = bool(pa_rule and not prior_pa and not pa_baseline)
+                if pa_cross:
+                    thr = pa_rule["below"]
+                    sent_ok = True
+                    if not webhook or webhook.startswith("PASTE_"):
+                        print(f"[{ts}] [{name}] PRICE TARGET {cur_str} < {_fmt_price(thr)} "
+                              f"{lst['url']} (no webhook)")
+                    else:
+                        try:
+                            send_discord(webhook, name, lst, grade, event="price_alert",
+                                         market_price=mkt, market_kind=mkt_kind, is_deal=below,
+                                         mention=pa_rule.get("mention"), alert_threshold=thr)
+                        except Exception as e:
+                            print(f"[{ts}] [{name}] discord error: {e}", file=sys.stderr)
+                            sent_ok = False
+                        else:
+                            print(f"[{ts}] [{name}] price target: {cur_str} < {_fmt_price(thr)} {lst['url']}")
+                            pa_count += 1
+                    if not sent_ok:
+                        continue   # retry next pass; persist nothing
+                    nb = 1 if (below or ref_below) else 0
+                    conn.execute("UPDATE seen SET price=?, price_str=?, last_seen=?, below_alerted=?, "
+                                 "price_alerted=1 WHERE watch=? AND item_id=?",
+                                 (cur, cur_str, today, nb, name, item_id))
+                    conn.commit()
+                    seen_prices[item_id] = (cur, cur_str, nb)
+                    pa_flags[item_id] = 1
+                    time.sleep(0.25)
+                    continue
+                # Not a crossing: keep the flag in sync so it re-arms once the price rises
+                # back above target (and silently records state on the pa_baseline pass).
+                if new_pa != prior_pa:
+                    conn.execute("UPDATE seen SET price_alerted=? WHERE watch=? AND item_id=?",
+                                 (new_pa, name, item_id))
+                    conn.commit()
+                    pa_flags[item_id] = new_pa
                 # (1) price drop?
                 if cur <= ref_price * (1 - drop_pct / 100) and (ref_price - cur) >= drop_min:
                     pct = round((ref_price - cur) / ref_price * 100)
@@ -1425,27 +1553,41 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
 
             # ---- brand-new listing ----
             seen_prices[item_id] = (cur, cur_str, 1 if below else 0)
+            # Does this new listing already sit below a price target? If so it gets the
+            # @mention folded into its "new listing" alert (one message, not a separate
+            # ping) and is recorded as already-alerted so it won't re-ping later. During
+            # the pa_baseline pass we still record the flag but suppress the @mention.
+            pa_rule = price_alert_hit(price_alerts, grade, pa_cur)
+            pa_hit = 1 if pa_rule else 0
+            pa_mention = pa_rule.get("mention") if (pa_rule and not pa_baseline) else None
+            pa_thr = pa_rule["below"] if (pa_rule and not pa_baseline) else None
             if dry_run:
-                tag = "  🔥BELOW-MKT" if below else ""
+                tag = ("  🔥BELOW-MKT" if below else "") + (f"  🎯<{_fmt_price(pa_rule['below'])}" if pa_rule else "")
                 print(f"[DRY] [{name}] {GRADE_LABELS[grade]:16} {cur_str:>12}{tag}  {lst['title'][:64]}  {lst['url']}")
                 new_count += 1
                 continue
             if seeding:
-                to_seed.append((name, item_id, grade, now_iso, cur, cur_str, today, 1 if below else 0))
+                to_seed.append((name, item_id, grade, now_iso, cur, cur_str, today,
+                                1 if below else 0, pa_hit))
                 continue
             if not webhook or webhook.startswith("PASTE_"):
                 print(f"[{ts}] [{name}] NEW {GRADE_LABELS[grade]} {cur_str}"
-                      f"{' BELOW-MKT' if below else ''} {lst['url']} (no webhook configured — not sent)")
+                      f"{' BELOW-MKT' if below else ''}{' TARGET' if pa_mention else ''} "
+                      f"{lst['url']} (no webhook configured — not sent)")
             else:
                 try:
-                    send_discord(webhook, name, lst, grade, market_price=mkt, market_kind=mkt_kind, is_deal=below)
+                    send_discord(webhook, name, lst, grade, market_price=mkt, market_kind=mkt_kind,
+                                 is_deal=below, mention=pa_mention, alert_threshold=pa_thr)
                 except Exception as e:
                     print(f"[{ts}] [{name}] discord error: {e}", file=sys.stderr)
                     seen_prices.pop(item_id, None)  # don't mark seen so we retry next pass
                     continue
                 print(f"[{ts}] [{name}] notified: {GRADE_LABELS[grade]} {cur_str}"
-                      f"{' 🔥below-market' if below else ''} {lst['url']}")
-            mark_seen(conn, name, item_id, grade, cur, cur_str, below_alerted=1 if below else 0)
+                      f"{' 🔥below-market' if below else ''}{' 🎯target' if pa_mention else ''} {lst['url']}")
+            mark_seen(conn, name, item_id, grade, cur, cur_str, below_alerted=1 if below else 0,
+                      price_alerted=pa_hit)
+            if pa_mention:
+                pa_count += 1
             new_count += 1
             time.sleep(0.25)  # be gentle with the webhook
 
@@ -1454,8 +1596,8 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         # so this churns the DB at most once per day).
         if to_seed:
             conn.executemany(
-                "INSERT OR IGNORE INTO seen (watch, item_id, grade, first_seen, price, price_str, last_seen, below_alerted) "
-                "VALUES (?,?,?,?,?,?,?,?)", to_seed)
+                "INSERT OR IGNORE INTO seen (watch, item_id, grade, first_seen, price, price_str, last_seen, "
+                "below_alerted, price_alerted) VALUES (?,?,?,?,?,?,?,?,?)", to_seed)
         if price_updates:
             conn.executemany(
                 "UPDATE seen SET price=?, price_str=?, below_alerted=? WHERE watch=? AND item_id=?",
@@ -1474,14 +1616,17 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
             priced = [f"{g} ${p:,.0f}({k})" for g in MARKET_GRADES
                       for (p, k) in [refs.get(g, (None, None))] if p]
             mtxt = f", ref {', '.join(priced)}" if priced else ""
+            patxt = f", {pa_count} price-target" if pa_count else ""
             print(f"[{ts}] [{name}] {len(listings)} scraped, {matched} matched, "
-                  f"{new_count} new, {drop_count} drop(s), {below_count} below-market{mtxt}.")
+                  f"{new_count} new, {drop_count} drop(s), {below_count} below-market{patxt}{mtxt}.")
         total_matched += matched
-        total_alerts += new_count + drop_count + below_count
+        total_alerts += new_count + drop_count + below_count + pa_count
 
     # --- after all watches: prune stale rows + health check on the whole scan ---
     if ask_baseline:
         meta_set(conn, "ask_baseline_done", "1")
+    if pa_baseline:
+        meta_set(conn, "pa_baseline_done", "1")
 
     if not dry_run:
         pruned = prune_seen(conn, prune_days)
@@ -1583,6 +1728,29 @@ def validate_config(cfg):
         for g in w.get("grades", []):
             if g.lower().replace(" ", "") not in valid_grades:
                 warnings.append(f"{tag}: unknown grade {g!r}")
+        pa = w.get("price_alerts")
+        if pa is not None:
+            watch_grades = {g.lower().replace(" ", "") for g in w.get("grades", [])}
+            if not isinstance(pa, list):
+                warnings.append(f"{tag}: 'price_alerts' must be a list")
+            else:
+                for j, r in enumerate(pa):
+                    rt = f"{tag}: price_alerts[{j}]"
+                    if not isinstance(r, dict):
+                        warnings.append(f"{rt}: must be an object"); continue
+                    try:
+                        float(r.get("below"))
+                    except (TypeError, ValueError):
+                        warnings.append(f"{rt}: missing/invalid numeric 'below'")
+                    rg = r.get("grade")
+                    if rg is not None:
+                        rgk = rg.lower().replace(" ", "")
+                        if rgk not in valid_grades:
+                            warnings.append(f"{rt}: unknown grade {rg!r}")
+                        elif watch_grades and rgk not in watch_grades:
+                            warnings.append(f"{rt}: grade {rg!r} not in this watch's grades (rule can never fire)")
+                    if not r.get("mention"):
+                        warnings.append(f"{rt}: no 'mention' — will alert without an @ping")
         for r in w.get("allowed_regions", []):
             if canon_region(r) in (None, "OTHER"):
                 warnings.append(f"{tag}: unrecognized region {r!r} (use US/CA)")

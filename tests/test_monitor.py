@@ -535,6 +535,119 @@ _r = m.fetch_all_watches("www.ebay.com", _wl, workers=4)
 ok("failed watch isolated to []", _r[2] == [] and _r[0] and _r[1])
 m.fetch_all = _saved_fetch_all
 
+print("== price_alerts (@mention on an absolute price target) ==")
+# --- pure helpers ---
+_par = m.parse_price_alerts({"price_alerts": [
+    {"grade": "PSA 10", "below": "2700", "mention": 209187722575872000},
+    {"below": 50},                 # any-grade, mention omitted
+    {"grade": "psa10"},            # no 'below' -> dropped
+    "junk",                        # not a dict -> dropped
+]})
+ok("parse: valid rules kept", len(_par) == 2)
+ok("parse: grade normalized", _par[0]["grade"] == "psa10")
+ok("parse: below -> float", _par[0]["below"] == 2700.0)
+ok("parse: mention -> str", _par[0]["mention"] == "209187722575872000")
+ok("parse: any-grade/no-mention", _par[1]["grade"] is None and _par[1]["mention"] is None)
+ok("hit: psa10 below fires", m.price_alert_hit(_par, "psa10", 2650.0)["mention"] == "209187722575872000")
+ok("hit: at threshold no", m.price_alert_hit(_par, "psa10", 2700.0) is None)
+ok("hit: wrong grade no", m.price_alert_hit(_par, "bgs10", 100.0) is None)     # 100<2700 but rule is psa10; any-rule is <50
+ok("hit: any-grade fires", m.price_alert_hit(_par, "bgs10", 40.0)["grade"] is None)
+ok("hit: price None no", m.price_alert_hit(_par, "psa10", None) is None)
+
+# --- validate_config warnings ---
+_vw = m.validate_config({"watches": [{"name": "X", "queries": ["q"], "require": ["a"],
+    "grades": ["psa10"], "price_alerts": [
+        {"grade": "psa10", "below": 2700, "mention": "1"},   # ok
+        {"grade": "bgs9.5", "below": 10, "mention": "1"},    # grade not in this watch's grades
+        {"below": "notnum", "mention": "1"},                 # bad 'below'
+        {"grade": "psa10", "below": 5}]}]})                  # missing mention
+ok("validate: grade-not-in-watch", any("never fire" in w for w in _vw))
+ok("validate: bad below", any("invalid numeric" in w for w in _vw))
+ok("validate: missing mention", any("without an @ping" in w for w in _vw))
+
+# --- scan_once integration ---
+_MENT = "209187722575872000"
+_paw = {"name": "PA", "require": ["232/091"], "grades": ["ungraded", "psa10"], "language": "any",
+        "allow_unknown_region": True,
+        "price_alerts": [{"grade": "psa10", "below": 2700, "mention": _MENT}]}
+_PACFG = {"discord_webhook_url": "https://discord.test/wh", "ebay_domain": "www.ebay.com",
+          "allow_unknown_region": True, "watches": [_paw]}
+_padb = os.path.join(tempfile.gettempdir(), "ebay_test_pa.db")
+if os.path.exists(_padb):
+    os.remove(_padb)
+m.DB_PATH = _padb
+paconn = m.db_connect()
+m.meta_set(paconn, "ask_baseline_done", "1")
+m.meta_set(paconn, "pa_baseline_done", "1")
+_sv_gmp, _sv_aar, _sv_send = m.get_market_prices, m.active_asking_reference, m.send_discord
+m.get_market_prices = lambda *a, **k: {}
+m.active_asking_reference = lambda *a, **k: {}
+_sa = []
+m.send_discord = lambda url, name, lst, grade, event="new", old_price_str=None, drop_pct=None, \
+    market_price=None, market_kind="sold", is_deal=None, mention=None, alert_threshold=None: \
+    _sa.append({"event": event, "id": lst["item_id"], "mention": mention})
+
+def _PL(item_id, price_low, grade_prefix="PSA 10 ", currency="USD"):
+    return {"item_id": item_id, "title": f"{grade_prefix}Pokemon Mew ex 232/091 Paldean Fates SIR",
+            "price_str": f"${price_low:,.2f}", "price_low": price_low, "currency": currency,
+            "url": f"https://www.ebay.com/itm/{item_id}", "image": None, "condition": None,
+            "shipping": None, "bids": None, "format": None, "location": "United States"}
+
+def _parun(fixtures):
+    m.fetch_all = lambda d, w, **k: list(fixtures)
+    _sa.clear(); m.scan_once(_PACFG, paconn); return list(_sa)
+
+def _seed_pa(item_id, price, grade="psa10", pa=0):
+    paconn.execute("INSERT INTO seen(watch,item_id,grade,first_seen,price,price_str,last_seen,"
+                   "below_alerted,price_alerted) VALUES('PA',?,?,?,?,?,?,0,?)",
+                   (item_id, grade, "2026-01-01T00:00:00", price, f"${price}", "2026-01-01", pa))
+    paconn.commit()
+
+_seed_pa("decoy", 9999)                       # so the watch isn't on its silent first run
+ok("pa: new below-target pings once", [x for x in _parun([_PL("n1", 2650)]) if x["id"] == "n1"]
+   == [{"event": "new", "id": "n1", "mention": _MENT}])
+ok("pa: no re-ping while below", _parun([_PL("n1", 2650)]) == [])
+ok("pa: above-target new no ping",
+   [x for x in _parun([_PL("hi", 3200)]) if x["id"] == "hi"][0]["mention"] is None)
+
+_seed_pa("x1", 2800)                          # existing, above target
+_xr = [x for x in _parun([_PL("x1", 2650)]) if x["id"] == "x1"]   # drops below (also a >5% drop)
+ok("pa: crossing is ONE message", len(_xr) == 1)
+ok("pa: crossing is price_alert (drop folded)", _xr and _xr[0]["event"] == "price_alert")
+ok("pa: crossing pings", _xr and _xr[0]["mention"] == _MENT)
+ok("pa: crossing baselines stored price",
+   paconn.execute("SELECT price FROM seen WHERE item_id='x1'").fetchone()[0] == 2650)
+ok("pa: no re-ping stays below", [x for x in _parun([_PL("x1", 2640)]) if x["id"] == "x1"] == [])
+_parun([_PL("x1", 2750)])                     # rises above target -> re-arm
+ok("pa: re-armed on rise",
+   paconn.execute("SELECT price_alerted FROM seen WHERE item_id='x1'").fetchone()[0] == 0)
+ok("pa: re-pings second crossing",
+   [x for x in _parun([_PL("x1", 2650)]) if x["id"] == "x1"][0]["mention"] == _MENT)
+ok("pa: non-USD below no ping",
+   [x for x in _parun([_PL("gbp", 2000, currency="GBP")]) if x["id"] == "gbp"][0]["mention"] is None)
+ok("pa: wrong grade no ping",
+   [x for x in _parun([_PL("ung", 50, grade_prefix="")]) if x["id"] == "ung"][0]["mention"] is None)
+
+# baseline suppresses the first-scan flood but records flags
+_padb2 = os.path.join(tempfile.gettempdir(), "ebay_test_pa2.db")
+if os.path.exists(_padb2):
+    os.remove(_padb2)
+m.DB_PATH = _padb2
+paconn2 = m.db_connect()
+m.meta_set(paconn2, "ask_baseline_done", "1")   # pa_baseline_done deliberately unset
+paconn2.execute("INSERT INTO seen(watch,item_id,grade,first_seen,price,price_str,last_seen,"
+                "below_alerted,price_alerted) VALUES('PA','b1','psa10','2026-01-01T00:00:00',"
+                "2600,'$2600','2026-01-01',0,0)")
+paconn2.commit()
+m.fetch_all = lambda d, w, **k: [_PL("b1", 2600)]
+_sa.clear(); m.scan_once(_PACFG, paconn2)
+ok("pa: baseline suppresses first-scan @mention", _sa == [])
+ok("pa: baseline records the flag",
+   paconn2.execute("SELECT price_alerted FROM seen WHERE item_id='b1'").fetchone()[0] == 1)
+ok("pa: baseline marks done", m.meta_get(paconn2, "pa_baseline_done") == "1")
+
+m.get_market_prices, m.active_asking_reference, m.send_discord = _sv_gmp, _sv_aar, _sv_send
+
 print("\n==== RESULT ====")
 if fails:
     print("FAILURES:", fails)

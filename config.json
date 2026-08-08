@@ -94,6 +94,10 @@
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
       "_language_note": "language 'any': the English 232/091 number is unique to the English set (Japanese Bubble Mew is 347/190), so the number gates language and 'english' would drop legit 'English NOT Japanese' titles.",
       "language": "any",
+      "_price_alerts_note": "Fire an @mention when a PSA 10 copy is listed below $2,700. 'below' is an absolute USD threshold (only USD-priced listings are compared); pings once per crossing and re-arms only if the price rises back above target.",
+      "price_alerts": [
+        {"grade": "psa10", "below": 2700, "mention": "209187722575872000"}
+      ],
       "min_price": null,
       "max_price": null
     },
