@@ -13,6 +13,10 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import ebay_monitor as m
 
+# Real fetch_all captured before any test mocks m.fetch_all (it calls the module-global
+# fetch_listings by name, so patching m.fetch_listings still applies to this reference).
+_REAL_FETCH_ALL = m.fetch_all
+
 # Emojis appear in some log lines. Production wraps stdout in _Tee (which swallows
 # console-encoding errors) and CI is UTF-8; a bare Windows console (cp1252) is not,
 # so make this harness tolerate un-encodable chars the same way.
@@ -535,6 +539,27 @@ _r = m.fetch_all_watches("www.ebay.com", _wl, workers=4)
 ok("failed watch isolated to []", _r[2] == [] and _r[0] and _r[1])
 m.fetch_all = _saved_fetch_all
 
+print("== build_search_url (worldwide vs US-only + CJK query) ==")
+_u_us = m.build_search_url("www.ebay.com", "espeon 196")
+ok("US-only search forces LH_PrefLoc=1", "LH_PrefLoc=1" in _u_us)
+_u_ww = m.build_search_url("www.ebay.com", "espeon 196", worldwide=True)
+ok("worldwide search omits LH_PrefLoc", "LH_PrefLoc" not in _u_ww)
+_u_cjk = m.build_search_url("www.ebay.com", "宝可梦 月亮伊布 cbb2c-06 15/15", worldwide=True)
+ok("CJK query URL-encodes without error", _u_cjk.startswith("https://www.ebay.com/sch/") and "%" in _u_cjk)
+# fetch_all passes worldwide=True iff the watch sets all_regions
+_seen_ww = {}
+def _cap_fl(d, q, sold=False, worldwide=False, **k):
+    _seen_ww["v"] = worldwide
+    return []
+_saved_fl = m.fetch_listings
+m.fetch_listings = _cap_fl
+_REAL_FETCH_ALL("www.ebay.com", {"name": "w", "queries": ["q"], "all_regions": True})
+ok("all_regions watch -> worldwide fetch", _seen_ww.get("v") is True)
+_seen_ww.clear()
+_REAL_FETCH_ALL("www.ebay.com", {"name": "w", "queries": ["q"]})
+ok("normal watch -> US-only fetch", _seen_ww.get("v") is False)
+m.fetch_listings = _saved_fl
+
 print("== price_alerts (@mention on an absolute price target) ==")
 # --- pure helpers ---
 _par = m.parse_price_alerts({"price_alerts": [
@@ -645,6 +670,30 @@ ok("pa: baseline suppresses first-scan @mention", _sa == [])
 ok("pa: baseline records the flag",
    paconn2.execute("SELECT price_alerted FROM seen WHERE item_id='b1'").fetchone()[0] == 1)
 ok("pa: baseline marks done", m.meta_get(paconn2, "pa_baseline_done") == "1")
+
+# all_regions bypasses the US/CA region gate (for import-only foreign cards)
+def _mk_arcfg(allregions):
+    w = {"name": "ARw", "require": ["232/091"], "grades": ["ungraded", "psa10"], "language": "any"}
+    if allregions:
+        w["all_regions"] = True
+    return {"discord_webhook_url": "https://discord.test/wh", "ebay_domain": "www.ebay.com", "watches": [w]}
+_ardb = os.path.join(tempfile.gettempdir(), "ebay_test_ar.db")
+def _ar_run(cfg, fixtures):
+    if os.path.exists(_ardb):
+        os.remove(_ardb)
+    m.DB_PATH = _ardb
+    c = m.db_connect()
+    c.execute("INSERT INTO seen(watch,item_id,grade,first_seen,price,price_str,last_seen,"
+              "below_alerted,price_alerted) VALUES('ARw','dec','psa10','2026-01-01T00:00:00',"
+              "999,'$999','2026-01-01',0,0)")   # decoy so the watch isn't on its silent first run
+    c.commit()
+    m.fetch_all = lambda d, w, **k: list(fixtures)
+    _sa.clear(); m.scan_once(cfg, c); c.close(); return list(_sa)
+_jp = _PL("jp1", 3000); _jp["location"] = "Japan"
+ok("all_regions off -> Japan filtered", _ar_run(_mk_arcfg(False), [_jp]) == [])
+_jp2 = _PL("jp1", 3000); _jp2["location"] = "Japan"
+ok("all_regions on -> Japan alerts",
+   [x for x in _ar_run(_mk_arcfg(True), [_jp2]) if x["id"] == "jp1"] != [])
 
 m.get_market_prices, m.active_asking_reference, m.send_discord = _sv_gmp, _sv_aar, _sv_send
 

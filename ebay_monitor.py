@@ -477,19 +477,23 @@ def _cell_text(li, selector):
     return val or None
 
 
-def build_search_url(domain: str, query: str, sold: bool = False) -> str:
+def build_search_url(domain: str, query: str, sold: bool = False, worldwide: bool = False) -> str:
     params = {"_nkw": query, "_ipg": "60"}
     if sold:
         # completed + sold listings = real recent sales (for market-price estimation).
         params.update({"LH_Sold": "1", "LH_Complete": "1", "_sop": "13"})
     else:
         params["_sop"] = "10"     # newest first
-        # Force US-located items. eBay geo-localizes results by the caller's IP, and
-        # cloud runners can get a Japan-only, yen-priced result set (breaking the
-        # region filter -> 0 matched, and price parsing -> garbage). LH_PrefLoc=1
-        # surfaces US listings regardless of runner geo. All watches filter to US/CA
-        # anyway, so this only helps.
-        params["LH_PrefLoc"] = "1"
+        if not worldwide:
+            # Force US-located items. eBay geo-localizes results by the caller's IP, and
+            # cloud runners can get a Japan-only, yen-priced result set (breaking the
+            # region filter -> 0 matched, and price parsing -> garbage). LH_PrefLoc=1
+            # surfaces US listings regardless of runner geo. US/CA watches filter to
+            # US/CA anyway, so this only helps.
+            params["LH_PrefLoc"] = "1"
+        # worldwide=True (an `all_regions` watch for an import-only card): OMIT the
+        # location filter so eBay returns items from ALL locations. Default (no
+        # LH_PrefLoc) is a strict superset of US-only, so this can only add listings.
     return f"https://{domain}/sch/i.html?" + urlencode(params)
 
 
@@ -569,13 +573,15 @@ def _looks_blocked(text: str) -> bool:
     return ("pardon our interruption" in low) or ("s-item__link" not in text and "s-card" not in text and len(text) < 60000)
 
 
-def fetch_listings(domain: str, query: str, max_attempts: int = 4, sold: bool = False):
+def fetch_listings(domain: str, query: str, max_attempts: int = 4, sold: bool = False,
+                   worldwide: bool = False):
     """Return a list of dicts: {item_id, title, price_str, price_low, url, ...}.
 
     Retries through eBay's 403 and 'Pardon Our Interruption' soft-block pages,
     re-priming cookies between attempts. sold=True fetches completed sales.
+    worldwide=True drops the US-only location filter (for import-only-card watches).
     """
-    url = build_search_url(domain, query, sold=sold)
+    url = build_search_url(domain, query, sold=sold, worldwide=worldwide)
     session = get_session(domain)
 
     html_text = None
@@ -689,12 +695,13 @@ def fetch_all(domain: str, watch: dict, delay: float = 0.3, sold: bool = False):
     sold=True fetches completed sales instead of active listings.
     """
     queries = watch.get("queries") or ([watch["query"]] if watch.get("query") else [])
+    worldwide = bool(watch.get("all_regions"))
     merged = {}
     for i, q in enumerate(queries):
         if i:
             time.sleep(delay)  # be gentle between searches
         try:
-            for lst in fetch_listings(domain, q, sold=sold):
+            for lst in fetch_listings(domain, q, sold=sold, worldwide=worldwide):
                 merged.setdefault(lst["item_id"], lst)
         except Exception as e:
             print(f"[{watch.get('name','?')}] query {q!r} error: {e}", file=sys.stderr)
@@ -1349,6 +1356,11 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         else:
             regions = cfg_regions
         allow_unknown_region = bool(watch.get("allow_unknown_region", cfg_allow_unknown_region))
+        # Import-only cards (Japanese/Chinese exclusives) are mostly sold by overseas
+        # sellers, so a US/CA region gate would hide nearly every listing. `all_regions`
+        # bypasses the region filter entirely for such a watch (canon_region only knows
+        # US/CA/OTHER, so there's no cleaner "worldwide" allow-list to express).
+        all_regions = bool(watch.get("all_regions", cfg.get("all_regions", False)))
         below_pct = float(watch.get("below_market_pct", cfg_below_pct))
         below_floor = float(watch.get("below_market_floor", cfg_below_floor))
         below_ask_pct = float(watch.get("below_ask_pct", cfg_below_ask_pct))
@@ -1384,7 +1396,7 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                 continue
             if is_auction(lst) and not allow_auctions:
                 continue
-            if not passes_region(lst.get("location"), regions, allow_unknown_region):
+            if not all_regions and not passes_region(lst.get("location"), regions, allow_unknown_region):
                 continue
             if not matches_filters(lst["title"], require, exclude, match_any):
                 continue

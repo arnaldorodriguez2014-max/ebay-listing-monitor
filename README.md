@@ -33,6 +33,9 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Rayquaza V 194/203** — Evolving Skies alternate full art (not the VMAX alt art 218/203)
 - **Rayquaza 3/17** — POP Series 1 (2004) Cosmos Holo Rare (holo only; non-holo excluded)
 - **Rayquaza EX 123/124** — Dragons Exalted (2012) Full Art Ultra Rare (not the regular 85/124)
+- **Espeon No.196** — **Japanese** Neo Discovery ("Crossing the Ruins") Holo Rare (not Neo Destiny "Dark Espeon" No.196, nor the non-holo Premium File promo)
+- **Karen's Umbreon 091/141** — 2001 **Japanese** Pokémon Card VS, Holo (1st Ed / Unlimited; not the 232/091 Mew or the adjacent Karen's siblings)
+- **Umbreon AR CBB2C-06 15/15** — **Chinese** Gem Pack Vol.2 exclusive (keyed on the unique CBB2C-06 code, since all four ARs share 15/15)
 
 > Vintage grade note: for the older Rayquaza cards (3/17, 123/124), graded copies are
 > commonly **PSA 8/9**, which the house grade buckets treat as "other" and don't alert
@@ -205,6 +208,9 @@ Add entries to the `watches` array in `config.json`:
 - `allow_lots` — set `true` to include multi-card lots for this watch.
 - `allowed_regions` — per-watch region allow-list (canonical `US` / `CA`);
   overrides the top-level default `["US", "CA"]`.
+- `all_regions` — set `true` to alert on sellers **anywhere** (bypasses the region
+  gate entirely). Use for import-only cards (Japanese/Chinese exclusives) that are
+  mostly sold overseas, where a US/CA filter would hide nearly every listing.
 - `price_drop_pct` / `price_drop_min` — per-watch override of the drop thresholds.
 - `price_alerts` — per-watch list of **absolute price targets that @mention someone
   on Discord**. Each rule is `{"grade": <bucket, optional>, "below": <USD>, "mention":

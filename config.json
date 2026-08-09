@@ -171,6 +171,62 @@
       "language": "any",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "Espeon No.196 Crossing the Ruins (JP Neo Discovery) Holo",
+      "_note": "Pokemon, Japanese. Espeon Holo Rare from the Japanese Neo Discovery set ('Crossing the Ruins' / 遺跡をこえて), printed as a bare running number 'No. 196' (no denominator). Identify by espeon + 196 + a set-name alt-list (crossing the ruins / neo discovery / neo2), plus a numberless fallback [espeon, 'crossing the ruins']. Bare 196 alone is unsafe (196 is Espeon's National Dex number, so it appears in modern Espeon ex/GX/VMAX listings) and is never used without the set name. CRITICAL: Neo DESTINY 'Dark Espeon' is ALSO Japanese No.196 — exclude 'dark'/'destiny' removes it (real Neo Discovery Espeon titles never contain those words); exclude 'umbreon' drops the Espeon 196 + Umbreon 197 pair/lot titles. exclude 'non holo'/'premium file' keeps it to the holo rare, dropping the separate Japanese 'Premium File' promo reprint (also No.196, but a cheap non-holo promo — confirmed on live listings). Verified offline through the full gate chain: 14/14 real holo titles matched (incl. CJK, PSA10, BGS9.5), 24/24 confusables (Dark Espeon keyword-spam/comparisons, English 1/75, modern dex-196 ex/GX/VMAX, Umbreon 197, Premium File promo, non-holo, sealed/jumbo/lot) rejected. Vintage PSA 8/9/CGC -> other_graded, won't alert.",
+      "queries": [
+        "espeon 196 neo discovery japanese",
+        "espeon crossing the ruins japanese holo",
+        "pokemon espeon no 196 neo discovery holo japanese",
+        "espeon 196 遺跡をこえて"
+      ],
+      "match_any": [
+        ["espeon", "196", ["crossing the ruins", "neo discovery", "neo2"]],
+        ["espeon", "crossing the ruins"]
+      ],
+      "exclude": ["umbreon", "dark", "destiny", "non holo", "premium file"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "_language_note": "language 'any': the JP-unique set name + bare No.196 gate it to the Japanese Neo Discovery print; 'japanese' would drop English-titled Japan listings with no CJK/'Japanese' word. A purely-CJK title (エーフィ only, no romaji 'Espeon') normalizes to just '196' and can't be matched — accepted limitation.",
+      "language": "any",
+      "min_price": null,
+      "max_price": null
+    },
+    {
+      "name": "Karen's Umbreon 091/141 (Pokemon VS, JP)",
+      "_note": "Pokemon, Japanese. 2001 Pokemon Card VS set, Karen's Umbreon (カリンのブラッキー) #091/141, Holo Rare (JP-only, never English; 1st Edition and Unlimited both exist — not required, for recall). Identify by the FULL number 091/141 ('091141') or the unique name karen+umbreon, NEVER bare '091' (which collides with Paldean Fates Mew 232/091 and Mewtwo 216/091). match_any Sig A = umbreon+091/141; Sig B = karen+umbreon+091 (terse '#091' listings with no '/141' and no 'VS', e.g. the real '#091 PSA 10 Swirl'); Sig C = 091/141+vs (CJK titles that keep only Latin 'VS'+number). Verified offline through the full gate chain: 9/9 real titles matched (incl. CJK, PSA10, BGS9.5, both '#091' short forms), 17/17 confusables (232/091, 216/091, adjacent Karen's Tyranitar 090 / Flareon 089 / Houndoom 092, other Umbreons, VSTAR-'vs' & 091/195 decoys, proxy/metal, lot) rejected. A comparison title restating Umbreon's exact number ('...not the Umbreon 091/141') is an inherent substring-match edge. Vintage PSA 7/9/CGC -> other_graded, won't alert.",
+      "queries": [
+        "karens umbreon 091/141",
+        "karens umbreon vs japanese holo",
+        "カリンのブラッキー vs",
+        "karens umbreon 091 1st edition"
+      ],
+      "match_any": [
+        ["umbreon", "091/141"],
+        ["karen", "umbreon", "091"],
+        ["091/141", "vs"]
+      ],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "_language_note": "language 'any': the card is JP-only (no English print), so the unique JP number 091/141 and the unique name gate identity; most English-language listings of this card literally say 'Japanese', which 'english' would wrongly drop.",
+      "language": "any",
+      "min_price": null,
+      "max_price": null
+    },
+    {
+      "name": "Umbreon AR — Gem Pack Vol.2 (CBB2C-06 15/15, CN)",
+      "_note": "Pokemon, Chinese (S-Chinese exclusive). Umbreon AR (月亮伊布) from 'Horizon Gem Pack Vol.2', card CBB2C-06 15/15. Identify by REQUIRING the Umbreon-specific code 'cbb2c06' AND the AR marker '1515'. Do NOT key on '15/15' alone: the set's four ARs (Eevee CBB2C-01, Umbreon CBB2C-06, Leafeon CBB2C-07, Sylveon CBB2C-09) ALL carry 15/15, so the code is the only true discriminator (a sibling listing physically can't contain cbb2c06, so even Umbreon-name-dropping sibling titles are rejected). Verified offline through the full gate chain: 12/12 real titles matched (incl. pure-CJK, PSA10, BGS10, BGS9.5), 10/10 confusables (Eevee/Sylveon/Leafeon/Vaporeon ARs, name-drop siblings, lot, VMAX 014/015) rejected. Minor gap: a title writing the code single-digit as 'CBB2C-6' (-> cbb2c6) is missed; sampled real listings all use '06'.",
+      "queries": [
+        "umbreon cbb2c-06 15/15",
+        "umbreon gem pack vol 2 cbb2c-06 15/15",
+        "pokemon chinese umbreon gem pack vol 2 15/15",
+        "宝可梦 月亮伊布 cbb2c-06 15/15"
+      ],
+      "require": ["cbb2c06", "1515"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "_language_note": "language 'any': China-exclusive code/number-identified card (no English/Japanese print). _norm strips CJK, so matching rides on the Latin tokens CBB2C-06 / 15/15 that real Chinese-seller and slab titles include; 'any' keeps the many CJK-tagged listings.",
+      "language": "any",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }
