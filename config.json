@@ -193,17 +193,20 @@
       "max_price": null
     },
     {
-      "name": "Umbreon AR — Gem Pack Vol.2 (CBB2C-06 15/15, CN)",
-      "_note": "Pokemon, Chinese (S-Chinese exclusive). Umbreon AR (月亮伊布) from 'Horizon Gem Pack Vol.2', card CBB2C-06 15/15. Identify by REQUIRING the Umbreon-specific code 'cbb2c06' AND the AR marker '1515'. Do NOT key on '15/15' alone: the set's four ARs (Eevee CBB2C-01, Umbreon CBB2C-06, Leafeon CBB2C-07, Sylveon CBB2C-09) ALL carry 15/15, so the code is the only true discriminator (a sibling listing physically can't contain cbb2c06, so even Umbreon-name-dropping sibling titles are rejected). Verified offline through the full gate chain: 12/12 real titles matched (incl. pure-CJK, PSA10, BGS10, BGS9.5), 10/10 confusables (Eevee/Sylveon/Leafeon/Vaporeon ARs, name-drop siblings, lot, VMAX 014/015) rejected. Minor gap: a title writing the code single-digit as 'CBB2C-6' (-> cbb2c6) is missed; sampled real listings all use '06'.",
+      "name": "Leafeon AR — Gem Pack Vol.2 (CBB2C-07 15/15, CN)",
+      "_note": "Pokemon, Chinese (S-Chinese exclusive). Leafeon AR (叶伊布) from 'Gem Pack Vol.2', card CBB2C-07 15/15. The set's four ARs (Eevee CBB2C-01, Umbreon CBB2C-06, Leafeon CBB2C-07, Sylveon CBB2C-09) ALL carry 15/15, so identity rides on the Leafeon-specific code 07 + the AR number 15/15, NEVER '15/15' alone. match_any Sig A = 'cbb2c07' + '1515' (adjacent-code forms 'CBB2C-07 ... 15/15'). Sig B = leafeon + '071515' (the 07-code+15/15 number smushed, e.g. 'Leafeon AR 07 15/15 CBB2C' where the code is split, or 'Leafeon 07 15/15 Gem Pack Vol.2' with NO 'CBB2C' at all) + (gem pack | cbb2c) for set safety. Rejects the sibling ARs (they lack cbb2c07/071515) even when they name-drop Leafeon, AND the other Leafeon cards in the set (V 07 13/15, Masterball 07 09/15, 07 03/15, Star 07 06/15 — all lack 1515/071515). Verified offline (13T/12F, FN=0 FP=0) and live-scraped (76 real Leafeon AR matched, 0 FP, 0 recall miss). ACE/CGC-9.5/PSA-9 slabs bucket other_graded and won't alert.",
       "queries": [
-        "umbreon cbb2c-06 15/15",
-        "umbreon gem pack vol 2 cbb2c-06 15/15",
-        "pokemon chinese umbreon gem pack vol 2 15/15",
-        "宝可梦 月亮伊布 cbb2c-06 15/15"
+        "leafeon cbb2c-07 15/15 gem pack vol 2",
+        "leafeon 07 15/15 gem pack vol 2 chinese",
+        "pokemon chinese leafeon gem pack vol 2 15/15",
+        "宝可梦 叶伊布 cbb2c-07 15/15"
       ],
-      "require": ["cbb2c06", "1515"],
+      "match_any": [
+        ["cbb2c07", "1515"],
+        ["leafeon", "071515", ["gem pack", "cbb2c"]]
+      ],
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
-      "_language_note": "language 'any': China-exclusive code/number-identified card (no English/Japanese print). _norm strips CJK, so matching rides on the Latin tokens CBB2C-06 / 15/15 that real Chinese-seller and slab titles include; 'any' keeps the many CJK-tagged listings.",
+      "_language_note": "language 'any': China-exclusive code/number-identified card (no English/Japanese print). _norm strips CJK, so matching rides on the Latin tokens (CBB2C-07 / 07 15/15 / gem pack) that real Chinese-seller and slab titles include; 'any' keeps the many CJK-tagged listings.",
       "language": "any",
       "min_price": null,
       "max_price": null
