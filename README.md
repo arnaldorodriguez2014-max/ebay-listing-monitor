@@ -29,7 +29,6 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 **Pokémon** (`language: any` — see note):
 - **Giratina V 186/196** — Lost Origin alternate full art (not the regular V or any VSTAR)
 - **Mew ex 232/091** — Paldean Fates "Bubble Mew" Special Illustration Rare (not the 216/091 Shiny)
-- **Mew ex 347/190** — the **Japanese** "Bubble Mew" SAR (Shiny Treasure ex / sv4a), counterpart of 232/091
 - **Rayquaza V 194/203** — Evolving Skies alternate full art (not the VMAX alt art 218/203)
 - **Rayquaza 3/17** — POP Series 1 (2004) Cosmos Holo Rare (holo only; non-holo excluded)
 - **Rayquaza EX 123/124** — Dragons Exalted (2012) Full Art Ultra Rare (not the regular 85/124)
