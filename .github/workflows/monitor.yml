@@ -23,8 +23,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 55       # safety cap; the loop self-exits at 50 min
     steps:
-      - name: Checkout
+      # Check out the CURRENT tip of main, not the schedule-fire-time commit. GitHub
+      # pins `schedule` runs to github.sha (main's HEAD when the cron fired); with 50-min
+      # runs queued back-to-back, a freshly pushed commit then takes 1-2 cycles (~1-2h)
+      # to actually run. `ref: main` fetches main's latest tip at job-start instead, so
+      # every run executes the newest code AND starts from the newest committed seen.db
+      # (main's tip is always the latest "chore: update seen listings" commit).
+      - name: Checkout latest main
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up Python
         uses: actions/setup-python@v5
