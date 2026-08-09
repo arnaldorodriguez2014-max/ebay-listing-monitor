@@ -19,7 +19,7 @@ more), or per-watch `allowed_regions`. Listings whose location can't be read are
 skipped unless `allow_unknown_region: true`.
 
 The monitor is TCG-agnostic (grade detection, currency, and matching all work for any
-card game). Currently watching (English unless noted; grades: ungraded / PSA 10 / BGS 10 / BGS 9.5):
+card game). Currently watching (English unless noted; grades: ungraded / PSA 10 / BGS 10 / BGS 9.5 / CGC 10):
 
 **One Piece:**
 - **Luffy ST26-005 SP** — SP only (min_price filters out the cheap base card)
@@ -39,7 +39,7 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 
 > Vintage grade note: for the older Rayquaza cards (3/17, 123/124), graded copies are
 > commonly **PSA 8/9**, which the house grade buckets treat as "other" and don't alert
-> on — these track raw + PSA 10 / BGS 10 / BGS 9.5 only.
+> on — these track raw + PSA 10 / BGS 10 / BGS 9.5 / CGC 10 only.
 
 > Language note: Pokémon watches use `language: any`, not `english`. Unlike One Piece (where
 > a card shares one number across languages, so `english` usefully filters), a Pokémon card's
@@ -47,8 +47,8 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 > number already excludes the Japanese card, and `english` would only do harm by dropping legit
 > listings that say "English **NOT Japanese**".
 >
-> Grade note: Pokémon slabs are often graded by **CGC/SGC**, which the current grade buckets
-> treat as "other" and don't alert on — these watches track raw + PSA 10 / BGS 10 / BGS 9.5 only.
+> Grade note: these watches track raw + PSA 10 / BGS 10 / BGS 9.5 / CGC 10. Other slab
+> grades (PSA 9, BGS 9, CGC 9.5, SGC, …) bucket as "other" and don't alert.
 
 ## ☁️ Cloud deployment (primary — runs even when your PC is off)
 
@@ -199,8 +199,8 @@ Add entries to the `watches` array in `config.json`:
   lots (booster box, ETB, "N cards lot", "lot of N", jumbo, …) are also detected
   centrally (`is_bulk_or_sealed`, word-boundary matched on the raw title so it can't
   misfire on things like "Holo TCG"), so watches don't need to list those per-card.
-- `grades` — any of: `ungraded`, `psa10`, `bgs10`, `bgs9.5`. (More can be added in
-  `classify_grade()` — e.g. `psa9`, `cgc10`.)
+- `grades` — any of: `ungraded`, `psa10`, `bgs10`, `bgs9.5`, `cgc10`. (More can be
+  added in `classify_grade()` — e.g. `psa9`, `sgc10`.)
 - `language` — `english` (default), `japanese`, `chinese`, `korean`, or `any`.
 - `min_price` / `max_price` — optional numeric filters (use `null` to disable).
 - `allow_auctions` — set `true` to include auction listings for this watch
@@ -293,8 +293,8 @@ therefore compared only against recent PSA 10 sales, a raw against recent raws, 
 so on. Each bucket is cached ~6h in the DB (`market:<watch>:<grade>`), and a watch's
 sold listings are fetched at most once per refresh (shared across its buckets).
 
-- Priced buckets: **ungraded, PSA 10, BGS 10, BGS 9.5**. `other_graded` (a mix of
-  companies/grades) is never priced — a single median across it would be meaningless.
+- Priced buckets: **ungraded, PSA 10, BGS 10, BGS 9.5, CGC 10**. `other_graded` (a mix
+  of companies/grades) is never priced — a single median across it would be meaningless.
 - Every alert with a market price shows **Market (recent sold)** and the listing's **% vs market**.
 - A listing priced between `below_market_floor` (default **0.5×** market — anything
   cheaper is treated as damaged/mislabeled junk, not a deal) and
@@ -346,7 +346,8 @@ The listing title is scanned:
 - `PSA 10` → PSA 10
 - `BGS 9.5` / `Beckett 9.5` → BGS 9.5
 - `BGS 10` / `Beckett 10` → BGS 10
-- any other grading company/number (PSA 9, CGC, SGC, …) → *ignored* (not in your buckets)
+- `CGC 10` (incl. `CGC 10 Gem Mint` / `CGC 10 Pristine`) → CGC 10
+- any other grading company/number (PSA 9, CGC 9.5, SGC, …) → *ignored* (not in your buckets)
 - no grading company mentioned → Ungraded / Raw
 
 Detection relies on sellers writing the grade in the title (standard practice for

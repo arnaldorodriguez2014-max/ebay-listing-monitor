@@ -179,6 +179,12 @@ _PSA_LABEL = r"(?:(?:GEM|MINT|MT|GM|GRADE)" + _SEP + r")*"
 _PSA10 = re.compile(r"\bPSA" + _SEP + _PSA_LABEL + r"10\b")
 _BGS95 = re.compile(r"\b(?:BGS|BECKETT)" + _SEP + r"9\.5\b")
 _BGS10 = re.compile(r"\b(?:BGS|BECKETT)" + _SEP + r"10\b")
+# CGC 10 comes in two tiers — "CGC 10 Gem Mint" and the all-10-subgrades "CGC 10
+# Pristine" (also "Perfect") — both are grade-10 slabs, so bucket either as cgc10.
+# The label class only spans grade WORDS, so "CGC 9.5" still falls through to
+# other_graded, and "CGC 10th"/"CGC 100" won't match (\b10\b needs a boundary).
+_CGC_LABEL = r"(?:(?:GEM|MINT|MT|GM|PRISTINE|PERFECT)" + _SEP + r")*"
+_CGC10 = re.compile(r"\bCGC" + _SEP + _CGC_LABEL + r"10\b")
 # "is this graded at all?" — an unambiguous company token anywhere in the title.
 _GRADED_HINT = re.compile(
     r"\b(?:" + "|".join(GRADING_COMPANIES) + r")\b", re.IGNORECASE
@@ -200,7 +206,7 @@ _ASPIRE_GRADE = re.compile(
 
 
 def classify_grade(title: str) -> str:
-    """Return a bucket key: 'psa10', 'bgs10', 'bgs9.5', 'other_graded', or 'ungraded'."""
+    """Return a bucket key: 'psa10', 'bgs10', 'bgs9.5', 'cgc10', 'other_graded', or 'ungraded'."""
     title = _ASPIRE_GRADE.sub(" ", title)
     t = title.upper()
     if _PSA10.search(t):
@@ -209,6 +215,8 @@ def classify_grade(title: str) -> str:
         return "bgs9.5"
     if _BGS10.search(t):
         return "bgs10"
+    if _CGC10.search(t):
+        return "cgc10"
     if _GRADED_HINT.search(title) or _GRADED_NUM.search(title):
         return "other_graded"
     return "ungraded"
@@ -422,6 +430,7 @@ GRADE_LABELS = {
     "psa10": "PSA 10",
     "bgs10": "BGS 10",
     "bgs9.5": "BGS 9.5",
+    "cgc10": "CGC 10",
     "other_graded": "Graded (other)",
     "ungraded": "Ungraded / Raw",
 }
@@ -430,6 +439,7 @@ GRADE_COLORS = {
     "psa10": 0xD32F2F,      # red
     "bgs10": 0x1565C0,      # blue
     "bgs9.5": 0x00897B,     # teal
+    "cgc10": 0xEF6C00,      # orange
     "other_graded": 0x8E24AA,  # purple
     "ungraded": 0x616161,   # grey
 }
@@ -438,6 +448,7 @@ GRADE_EMOJI = {
     "psa10": "🔴",
     "bgs10": "🔵",
     "bgs9.5": "🟢",
+    "cgc10": "🟠",
     "other_graded": "🟣",
     "ungraded": "⚪",
 }
@@ -446,6 +457,7 @@ GRADE_COMPANY = {
     "psa10": "PSA",
     "bgs10": "BGS (Beckett)",
     "bgs9.5": "BGS (Beckett)",
+    "cgc10": "CGC",
     "other_graded": "Graded",
     "ungraded": "Raw / Ungraded",
 }
@@ -755,7 +767,7 @@ def _median(values):
 # sold population, so a median means something. 'other_graded' is deliberately
 # excluded — it mixes companies and grades (PSA 9, CGC 10, SGC 8, …), so a single
 # median across it would be meaningless.
-MARKET_GRADES = ("ungraded", "psa10", "bgs10", "bgs9.5")
+MARKET_GRADES = ("ungraded", "psa10", "bgs10", "bgs9.5", "cgc10")
 
 
 def fetch_sold_sales(domain, watch):
@@ -1308,6 +1320,15 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
     if pa_baseline:
         print(f"[{ts}] first scan with price_alerts — baselining price-target flags silently "
               "(no @mention alerts this pass).")
+    # Same guard for the CGC 10 grade: it was added to the grade set after these watches
+    # were already tracking others, so every CGC 10 listing already on the site would
+    # otherwise fire a "new listing" alert at once. On the first scan after it's added,
+    # seed existing CGC 10 matches silently; genuinely new CGC 10 listings alert normally.
+    cgc10_baseline = ((not dry_run) and (not reseed)
+                      and meta_get(conn, "cgc10_baseline_done") != "1")
+    if cgc10_baseline:
+        print(f"[{ts}] first scan tracking CGC 10 — seeding existing CGC 10 listings silently "
+              "(no new-listing alerts for them this pass).")
     total_scraped = 0
     total_matched = 0
     total_alerts = 0        # new + drop + below pings this scan (drives CI persistence)
@@ -1578,7 +1599,9 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
                 print(f"[DRY] [{name}] {GRADE_LABELS[grade]:16} {cur_str:>12}{tag}  {lst['title'][:64]}  {lst['url']}")
                 new_count += 1
                 continue
-            if seeding:
+            if seeding or (cgc10_baseline and grade == "cgc10"):
+                # Normal first-run seeding, OR the one-time silent seed of CGC 10 listings
+                # that were already up when the grade was added (avoids an alert storm).
                 to_seed.append((name, item_id, grade, now_iso, cur, cur_str, today,
                                 1 if below else 0, pa_hit))
                 continue
@@ -1639,6 +1662,8 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         meta_set(conn, "ask_baseline_done", "1")
     if pa_baseline:
         meta_set(conn, "pa_baseline_done", "1")
+    if cgc10_baseline:
+        meta_set(conn, "cgc10_baseline_done", "1")
 
     if not dry_run:
         pruned = prune_seen(conn, prune_days)

@@ -18,7 +18,7 @@
         "monkey d luffy st26-005 foil"
       ],
       "require": ["st26-005"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "language": "english",
       "_min_price_note": "ST26-005 covers both the cheap base card and the SP. Observed: base raws $2-30 and base PSA 10 slabs $120-270; genuine SP raws start at $396 and SP PSA 10s at $1,100. 300 drops both junk clusters without excluding any real SP listing.",
       "min_price": 300,
@@ -31,7 +31,7 @@
         "luffy op05-119 sec alternate art"
       ],
       "require": ["op05-119"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "language": "english",
       "_min_price_note": "OP05-119 also matches cheap non-SEC printings. Observed a tight junk cluster at $10-75 (21 of 39 raws), with legitimate copies from $100 up. Raise this if base cards still slip through.",
       "min_price": 100,
@@ -47,7 +47,7 @@
         "luffy st10-006 dallas promo gear 5"
       ],
       "require": ["luffy", "one piece day", "dallas"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "_language_note": "language 'any': it's an English US-event exclusive (no Japanese 'One Piece Day Dallas' print exists), so the event descriptor gates it; 'english' would risk dropping a listing that mentions 'Japanese' in a comparison.",
       "language": "any",
       "min_price": null,
@@ -66,7 +66,7 @@
       "require": ["giratina", "186/196"],
       "_exclude_note": "sealed/bulk/lot terms are now handled centrally by is_bulk_or_sealed(); only the card-specific 'vstar' (keeps out Giratina VSTAR) remains here.",
       "exclude": ["vstar"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "_language_note": "language 'any': the English 186/196 number is unique to the English set (Japanese alt art is 111/100), so the number gates language and 'english' would drop legit 'English not Japanese' titles.",
       "language": "any",
       "min_price": null,
@@ -91,7 +91,7 @@
       ],
       "_exclude_note": "sealed/bulk/lot terms are now handled centrally by is_bulk_or_sealed(); only the card-specific terms (the 216/091 sibling in both spellings, and mewtwo) remain here.",
       "exclude": ["216/091", "216/91", "mewtwo"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "_language_note": "language 'any': the English 232/091 number is unique to the English set (Japanese Bubble Mew is 347/190), so the number gates language and 'english' would drop legit 'English NOT Japanese' titles.",
       "language": "any",
       "_price_alerts_note": "Fire an @mention when a PSA 10 copy is listed below $2,700. 'below' is an absolute USD threshold (only USD-priced listings are compared); pings once per crossing and re-arms only if the price rises back above target.",
@@ -116,7 +116,7 @@
         ["mew ex", "347", ["shiny treasure", "sv4a", "sv 4a"], ["sar", "special art", "bubble mew", "soap bubble"]]
       ],
       "exclude": ["mewtwo"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "language": "any",
       "min_price": null,
       "max_price": null
@@ -132,7 +132,7 @@
         "rayquaza v 194/203 alternate full art"
       ],
       "require": ["rayquaza", "194/203"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "_language_note": "language 'any': the English 194/203 number is unique to the English set (the Japanese Rayquaza V SAR from Blue Sky Stream has a different number), so the number gates language and 'english' would drop legit 'English NOT Japanese' titles.",
       "language": "any",
       "min_price": null,
@@ -149,7 +149,7 @@
       ],
       "require": ["rayquaza", "3/17", ["pop series", "pop 1"]],
       "exclude": ["non holo"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "language": "any",
       "min_price": null,
       "max_price": null
@@ -167,7 +167,7 @@
         ["rayquaza", "123/124"],
         ["rayquaza", "123", ["full art", "fullart"], ["dragons exalted", "dragonsexalted"]]
       ],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "language": "any",
       "min_price": null,
       "max_price": null
@@ -186,7 +186,7 @@
         ["espeon", "crossing the ruins"]
       ],
       "exclude": ["umbreon", "dark", "destiny", "non holo", "premium file"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "_language_note": "language 'any': the JP-unique set name + bare No.196 gate it to the Japanese Neo Discovery print; 'japanese' would drop English-titled Japan listings with no CJK/'Japanese' word. A purely-CJK title (エーフィ only, no romaji 'Espeon') normalizes to just '196' and can't be matched — accepted limitation.",
       "language": "any",
       "min_price": null,
@@ -206,7 +206,7 @@
         ["karen", "umbreon", "091"],
         ["091/141", "vs"]
       ],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "_language_note": "language 'any': the card is JP-only (no English print), so the unique JP number 091/141 and the unique name gate identity; most English-language listings of this card literally say 'Japanese', which 'english' would wrongly drop.",
       "language": "any",
       "min_price": null,
@@ -222,7 +222,7 @@
         "宝可梦 月亮伊布 cbb2c-06 15/15"
       ],
       "require": ["cbb2c06", "1515"],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "_language_note": "language 'any': China-exclusive code/number-identified card (no English/Japanese print). _norm strips CJK, so matching rides on the Latin tokens CBB2C-06 / 15/15 that real Chinese-seller and slab titles include; 'any' keeps the many CJK-tagged listings.",
       "language": "any",
       "min_price": null,

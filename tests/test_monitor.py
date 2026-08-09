@@ -49,7 +49,15 @@ check("BGS 9.5", m.classify_grade("Luffy BGS 9.5"), "bgs9.5")
 check("BGS 10 not 9.5", m.classify_grade("Luffy BGS 10 Pristine"), "bgs10")
 check("Beckett 9.5", m.classify_grade("Luffy Beckett 9.5"), "bgs9.5")
 check("PSA 9 -> other", m.classify_grade("Luffy PSA 9"), "other_graded")
-check("CGC 10 -> other", m.classify_grade("Luffy CGC 10"), "other_graded")
+check("CGC 10", m.classify_grade("Luffy CGC 10"), "cgc10")
+check("CGC 10 Gem Mint", m.classify_grade("Zapdos ex 202/165 CGC 10 Gem Mint"), "cgc10")
+check("CGC 10 Pristine", m.classify_grade("Charizard CGC 10 Pristine"), "cgc10")
+check("CGC Pristine 10", m.classify_grade("Charizard CGC Pristine 10"), "cgc10")
+check("CGC-10 hyphen", m.classify_grade("Luffy CGC-10"), "cgc10")
+check("CGC10 no space", m.classify_grade("Luffy CGC10"), "cgc10")
+check("CGC 9.5 stays other", m.classify_grade("Luffy CGC 9.5"), "other_graded")
+check("CGC 10th anniversary not cgc10", m.classify_grade("Pokemon CGC 10th Anniversary Promo"), "other_graded")
+check("ready for CGC -> raw", m.classify_grade("Mew 232/091 NM ready for CGC grading"), "ungraded")
 check("raw", m.classify_grade("Luffy ST26-005 SP Foil English"), "ungraded")
 check("ACE 10 slab -> other", m.classify_grade("O-Nami ACE 10 OP06-101"), "other_graded")
 check("TAG 10 slab -> other", m.classify_grade("Chopper TAG 10 ST01-006"), "other_graded")
@@ -694,6 +702,38 @@ ok("all_regions off -> Japan filtered", _ar_run(_mk_arcfg(False), [_jp]) == [])
 _jp2 = _PL("jp1", 3000); _jp2["location"] = "Japan"
 ok("all_regions on -> Japan alerts",
    [x for x in _ar_run(_mk_arcfg(True), [_jp2]) if x["id"] == "jp1"] != [])
+
+# cgc10 grade + one-time silent baseline (seed pre-existing CGC 10 without alerting)
+_cdb = os.path.join(tempfile.gettempdir(), "ebay_test_cgc.db")
+if os.path.exists(_cdb):
+    os.remove(_cdb)
+m.DB_PATH = _cdb
+cconn = m.db_connect()
+m.meta_set(cconn, "ask_baseline_done", "1")     # isolate the cgc10 baseline under test
+_ccfg = {"discord_webhook_url": "https://discord.test/wh", "ebay_domain": "www.ebay.com",
+         "watches": [{"name": "CG", "require": ["232/091"], "language": "any",
+                      "grades": ["ungraded", "psa10", "cgc10"], "allow_unknown_region": True}]}
+def _cg(item_id, title):
+    return {"item_id": item_id, "title": title, "price_str": "$500.00", "price_low": 500.0,
+            "currency": "USD", "url": f"https://ebay.com/itm/{item_id}", "image": None,
+            "condition": None, "shipping": None, "bids": None, "format": None, "location": "USA"}
+def _cg_run(fixtures):
+    m.fetch_all = lambda d, w, **k: list(fixtures)
+    _sa.clear(); m.scan_once(_ccfg, cconn); return list(_sa)
+cconn.execute("INSERT INTO seen(watch,item_id,grade,first_seen,price,price_str,last_seen,"
+              "below_alerted,price_alerted) VALUES('CG','dec','psa10','2026-01-01T00:00:00',9,'$9','2026-01-01',0,0)")
+cconn.commit()   # decoy so the watch is past its silent first-run seed
+# scan 1 (baseline active): pre-existing CGC 10 is seeded silently; psa10 still alerts
+_r1 = _cg_run([_cg("c1", "Mew ex 232/091 CGC 10 Gem Mint"), _cg("p1", "Mew ex 232/091 PSA 10")])
+ok("cgc10 baseline: pre-existing CGC 10 not alerted", [x for x in _r1 if x["id"] == "c1"] == [])
+ok("cgc10 baseline: psa10 still alerts (cgc10-only baseline)", any(x["id"] == "p1" for x in _r1))
+ok("cgc10 baseline: seeded as cgc10",
+   cconn.execute("SELECT grade FROM seen WHERE item_id='c1'").fetchone()[0] == "cgc10")
+ok("cgc10 baseline: flag set", m.meta_get(cconn, "cgc10_baseline_done") == "1")
+# scan 2 (baseline done): a genuinely new CGC 10 listing now alerts
+_r2 = _cg_run([_cg("c1", "Mew ex 232/091 CGC 10 Gem Mint"), _cg("c2", "Mew ex 232/091 CGC 10 Pristine")])
+ok("cgc10 post-baseline: new CGC 10 alerts", any(x["id"] == "c2" for x in _r2))
+ok("cgc10 post-baseline: baselined CGC 10 not re-alerted", [x for x in _r2 if x["id"] == "c1"] == [])
 
 m.get_market_prices, m.active_asking_reference, m.send_discord = _sv_gmp, _sv_aar, _sv_send
 
