@@ -241,6 +241,10 @@
       "sealed_product": true,
       "grades": ["ungraded"],
       "language": "english",
+      "_price_alerts_note": "@mention when a sealed set lists under $800 (market ~$950-1500, so sub-$800 is a genuine deal). No grade key -> applies to the watch's only bucket (ungraded). Fires once per crossing; re-arms if the price rises back above target.",
+      "price_alerts": [
+        {"below": 800, "mention": "209187722575872000"}
+      ],
       "_min_price_note": "Real sealed sets run ~$620-2000; singles/accessories/promo-collections all fall under ~$420. 500 cleanly separates them (the dash-code reject already removes numbered singles, incl. the $700-917 Luffy ST01-012 Winner Promo).",
       "min_price": 500,
       "max_price": null
