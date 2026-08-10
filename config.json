@@ -210,6 +210,22 @@
       "language": "any",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "Growlithe #058 Vending Series 3 (Japanese, 1998)",
+      "_note": "Pokemon, Japanese vintage (1998 Vending Machine / 自動販売機 promo, Series 3 'Green', glossy). Identify by growlithe + vending + a Series-3-or-number confirm ['series 3','series iii','58']. The card number #58 IS Growlithe's National Dex number (so it's redundant with the name and only ONE Growlithe exists in the Vending line — Series 3), which is why identity keys on the SET ('vending' + 'series 3'), not the number. 'vending' excludes every non-Vending Growlithe (Base Set 28/102, Evolutions 58/108, etc.); the series/number clause excludes a 'Base Set Growlithe, also sell vending cards' cross-promo (no series 3/58). Catches the terse TCGplayer form 'Growlithe Vending Machine Cards Series 3 (Green) Regular' (no number) via 'series 3', and a mislabeled '055' listing (dex 055 is Golduck -> seller typo, same card) via 'series 3'. Rejects other Vending Series 3 Pokemon (Vulpix etc.), lots, sealed. Verified offline (7/7 real forms matched, confusables rejected) and live-scraped (91 real Growlithe matches, 0 non-Growlithe FP, 0 'arcanine' name-drops). Documented edge: an Arcanine listing that writes 'evolves from Growlithe #58' would match, but none appear in live data. Vintage PSA 8/9 & CGC 9 slabs bucket other_graded and won't alert (raw + PSA10/BGS10/BGS9.5/CGC10 only).",
+      "queries": [
+        "growlithe vending series 3 japanese",
+        "pokemon japanese vending growlithe 058 glossy",
+        "growlithe vending series iii glossy old back",
+        "ガーディ vending series 3 グロース"
+      ],
+      "require": ["growlithe", "vending", ["series 3", "series iii", "58"]],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
+      "_language_note": "language 'any': Japan-only Vending card (no English print), so growlithe + vending + series 3 already gate identity; _norm strips CJK, matching rides on the Latin tokens sellers include, and 'any' keeps the many CJK/Japanese-tagged listings that 'english' would drop.",
+      "language": "any",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }
