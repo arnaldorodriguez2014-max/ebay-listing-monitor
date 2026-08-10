@@ -25,6 +25,7 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Luffy ST26-005 SP** — SP only (min_price filters out the cheap base card)
 - **Luffy OP05-119 SEC (Alt / Manga Art)** — SEC only (min_price filters the base card)
 - **Luffy ST10-006 One Piece Day Dallas Promo** — the 2025 Dallas event exclusive (not the starter-deck ST10-006)
+- **3rd Anniversary Set (English, sealed)** — the sealed 2025 English boxed **set** (a sealed *product*, not a single; rejects the singles/promos/campaign-collection pulled from it)
 
 **Pokémon** (`language: any` — see note):
 - **Giratina V 186/196** — Lost Origin alternate full art (not the regular V or any VSTAR)
@@ -206,6 +207,12 @@ Add entries to the `watches` array in `config.json`:
 - `allow_auctions` — set `true` to include auction listings for this watch
   (default: auctions excluded). Global default: `include_auctions` (top level).
 - `allow_lots` — set `true` to include multi-card lots for this watch.
+- `sealed_product` — set `true` for a **sealed boxed product** (e.g. an anniversary
+  set). Rejects any listing carrying a single-card number (`OP13-120`, `ST01-012`, …),
+  since those are singles pulled from the set, not the box. Pair with `grades:
+  ["ungraded"]` (boxes aren't graded) and usually a `min_price` to cut cheap
+  singles/accessories. The lot/sealed gates stay on (a plain "Set" passes; lots and
+  bundles are still rejected).
 - `allowed_regions` — per-watch region allow-list (canonical `US` / `CA`);
   overrides the top-level default `["US", "CA"]`.
 - `all_regions` — set `true` to alert on sellers **anywhere** (bypasses the region

@@ -735,6 +735,38 @@ _r2 = _cg_run([_cg("c1", "Mew ex 232/091 CGC 10 Gem Mint"), _cg("c2", "Mew ex 23
 ok("cgc10 post-baseline: new CGC 10 alerts", any(x["id"] == "c2" for x in _r2))
 ok("cgc10 post-baseline: baselined CGC 10 not re-alerted", [x for x in _r2 if x["id"] == "c1"] == [])
 
+# sealed_product: reject dash-code singles, keep the sealed box, don't false-reject ship dates
+_sdb = os.path.join(tempfile.gettempdir(), "ebay_test_sealed.db")
+if os.path.exists(_sdb):
+    os.remove(_sdb)
+m.DB_PATH = _sdb
+sconn = m.db_connect()
+m.meta_set(sconn, "ask_baseline_done", "1"); m.meta_set(sconn, "cgc10_baseline_done", "1")
+_scfg = {"discord_webhook_url": "https://discord.test/wh", "ebay_domain": "www.ebay.com",
+         "watches": [{"name": "SEAL", "require": ["one piece", "3rd anniv", "set"], "exclude": ["campaign"],
+                      "sealed_product": True, "grades": ["ungraded"], "language": "english", "min_price": 500}]}
+def _sl(item_id, title, price):
+    return {"item_id": item_id, "title": title, "price_str": f"${price}", "price_low": float(price),
+            "currency": "USD", "url": f"https://ebay.com/itm/{item_id}", "image": None, "condition": None,
+            "shipping": None, "bids": None, "format": None, "location": "USA"}
+sconn.execute("INSERT INTO seen(watch,item_id,grade,first_seen,price,price_str,last_seen,below_alerted,"
+              "price_alerted) VALUES('SEAL','dec','ungraded','2026-01-01T00:00:00',9,'$9','2026-01-01',0,0)")
+sconn.commit()   # decoy so the watch is past its silent first run
+m.fetch_all = lambda d, w, **k: [
+    _sl("box1", "ONE PIECE CARD GAME English Version 3rd Anniversary Set BANDAI Sealed", 1000),
+    _sl("box2", "One Piece Card Game 3rd Anniversary Set English In Hand Ships 8/10", 950),
+    _sl("single", "Sabo OP13-120 Promo English Version 3rd Anniversary Set One Piece", 250),
+    _sl("promo", "Luffy ST01-012 3rd Anniversary Winner Promo Prize Set One Piece English", 800),
+    _sl("cheap", "One Piece 3rd Anniversary Set English Alt art", 160),
+    _sl("camp", "One Piece 3rd Anniversary Campaign Promo Card Collection Set English", 40)]
+_sa.clear(); m.scan_once(_scfg, sconn); _sids = {x["id"] for x in _sa}
+ok("sealed: sealed box alerts", "box1" in _sids)
+ok("sealed: box with ship-date 8/10 alerts (date != card number)", "box2" in _sids)
+ok("sealed: dash-code single (OP13-120) rejected", "single" not in _sids)
+ok("sealed: dash-code promo (ST01-012) rejected", "promo" not in _sids)
+ok("sealed: under-min_price single rejected", "cheap" not in _sids)
+ok("sealed: campaign promo collection rejected", "camp" not in _sids)
+
 m.get_market_prices, m.active_asking_reference, m.send_discord = _sv_gmp, _sv_aar, _sv_send
 
 print("\n==== RESULT ====")

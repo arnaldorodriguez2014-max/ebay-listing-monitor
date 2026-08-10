@@ -1369,6 +1369,13 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         match_any = watch.get("match_any")
         allow_lots = watch.get("allow_lots", False)
         allow_auctions = watch.get("allow_auctions", cfg.get("include_auctions", False))
+        # Sealed-product watch (e.g. a boxed anniversary SET): the box itself carries no
+        # single-card number, so a title bearing one (OP13-120, ST01-012, …) is a single
+        # pulled from the set, not the sealed product — reject those. Uses the dash-code
+        # form only (One Piece style); the Pokemon "232/091" slash form is skipped because
+        # it false-matches shipping dates like "8/10". The is_lot/is_bulk_or_sealed gates
+        # stay active (they reject lots/bundles/playsets while the plain "Set" passes).
+        sealed_product = bool(watch.get("sealed_product"))
         drop_pct = float(watch.get("price_drop_pct", cfg_drop_pct))
         drop_min = float(watch.get("price_drop_min", cfg_drop_min))
         if "allowed_regions" in watch:
@@ -1415,6 +1422,8 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         for lst in listings:
             if (is_lot(lst["title"]) or is_bulk_or_sealed(lst["title"])) and not allow_lots:
                 continue
+            if sealed_product and _CARDNUM_RE.search(lst["title"]):
+                continue  # a single-card number -> a single from the set, not the sealed box
             if is_auction(lst) and not allow_auctions:
                 continue
             if not all_regions and not passes_region(lst.get("location"), regions, allow_unknown_region):

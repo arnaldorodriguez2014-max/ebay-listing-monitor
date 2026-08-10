@@ -226,6 +226,24 @@
       "language": "any",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "One Piece 3rd Anniversary Set (English, sealed)",
+      "_note": "SEALED PRODUCT (not a single card) — the official 2025 One Piece Card Game English Version 3rd Anniversary Set. First sealed-product watch: uses grades ['ungraded'] (boxes aren't graded) and 'sealed_product': true, which rejects any listing carrying a single-card number (OP13-120, ST01-012, ...) since those are singles pulled from the set, not the box. The is_lot / is_bulk_or_sealed gates stay ON (the plain 'Set' passes them, while lots/bundles/playsets are rejected). require = one piece + 3rd/third anniv + 'set' (excludes 1st/2nd anniversary and singles that say 'card' not 'set'). exclude 'campaign'/'treasure' drops the separate '3rd Anniversary Treasure Campaign Promo Collection' (~$26-80); 'playset' drops multi-single playsets. min_price 500 cuts the cheap no-number singles/accessories (alt-art/leader singles $100-420, deck/storage box, guide book) — the real sealed set is ~$620-2000. language 'english' drops the Japanese version. Live-verified: 161 scraped -> 39 kept, ALL genuine sealed English sets (incl. presale/in-hand/Bandai and titles with ship dates like '8/10'), 0 FP; singles (Sabo OP13-120, Ace OP13-119, Luffy ST01-012 Winner Promo) and the campaign promo collection all rejected. Note: the card-number reject uses the dash-code form only — the Pokemon '232/091' slash form is skipped because it false-matches shipping dates.",
+      "queries": [
+        "one piece card game english 3rd anniversary set",
+        "one piece 3rd anniversary set english version sealed",
+        "one piece tcg 3rd anniversary set english bandai",
+        "one piece card game 3rd anniversary set presale english"
+      ],
+      "require": ["one piece", ["3rd anniv", "third anniv"], "set"],
+      "exclude": ["campaign", "treasure", "playset"],
+      "sealed_product": true,
+      "grades": ["ungraded"],
+      "language": "english",
+      "_min_price_note": "Real sealed sets run ~$620-2000; singles/accessories/promo-collections all fall under ~$420. 500 cleanly separates them (the dash-code reject already removes numbered singles, incl. the $700-917 Luffy ST01-012 Winner Promo).",
+      "min_price": 500,
+      "max_price": null
     }
   ]
 }
