@@ -248,6 +248,23 @@
       "_min_price_note": "Real sealed sets run ~$620-2000; singles/accessories/promo-collections all fall under ~$420. 500 cleanly separates them (the dash-code reject already removes numbered singles, incl. the $700-917 Luffy ST01-012 Winner Promo).",
       "min_price": 500,
       "max_price": null
+    },
+    {
+      "name": "Espeon 1/75 Neo Discovery Holo Rare (English)",
+      "_note": "Pokemon, English vintage (2001 Neo Discovery, WOTC, Holo Rare) — the ENGLISH counterpart of the Japanese Neo Discovery Espeon No.196 (its own separate watch); this one is English #1/75. Identify by espeon + neo discovery + '1/75' (norm '175'). The 1/75 number is SHARED by WOTC's German/French/Italian prints, so those language markers are excluded to keep it English (terse English listings carry no language word -> 'unknown' -> kept; language 'english' additionally drops JP/CJK). exclude 'dark'/'destiny' guards vs Neo DESTINY 'Dark Espeon' (different set/number). '175' can in theory collide with a '$175' price, but live data shows real JP No.196 listings never carry '1/75' (0 '196' leak). Verified offline (8/8 English matched; JP 196, Dark Espeon, Umbreon 5/75, modern Espeon ex, Neo Genesis 1/111, German/French/Italian, and a two-number lot all rejected) and live-scraped (89 English matches, 0 '196' leak). Vintage PSA 8/9 & CGC 8/9 bucket other_graded and won't alert (raw + PSA10/BGS10/BGS9.5/CGC10 only).",
+      "queries": [
+        "espeon 1/75 neo discovery holo rare",
+        "pokemon espeon neo discovery 1/75 english",
+        "espeon neo discovery 1st edition 1/75 holo",
+        "espeon 1/75 neo discovery unlimited holo rare"
+      ],
+      "require": ["espeon", "neo discovery", "1/75"],
+      "exclude": ["dark", "destiny", "german", "french", "italian", "spanish"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
+      "_language_note": "language 'english' + the german/french/italian/spanish excludes: the 1/75 number is shared across WOTC's Western-language prints, so the language markers scope this to the English card while terse English listings (no language word -> 'unknown') are kept.",
+      "language": "english",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }
