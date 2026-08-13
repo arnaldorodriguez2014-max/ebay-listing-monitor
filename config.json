@@ -70,6 +70,10 @@
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "_language_note": "language 'any': the English 186/196 number is unique to the English set (Japanese alt art is 111/100), so the number gates language and 'english' would drop legit 'English not Japanese' titles.",
       "language": "any",
+      "_price_alerts_note": "@mention when a PSA 10 lists under $2,700. Live market (2026-08): PSA 10 range $2,850-10,000, median ~$4,000, cheapest currently $2,850 — so $2,700 is a genuine below-floor deal line (0 current listings under it, no baseline flood). Having price_alerts also puts this watch on the 30s fast-poll tier.",
+      "price_alerts": [
+        {"grade": "psa10", "below": 2700, "mention": "209187722575872000"}
+      ],
       "min_price": null,
       "max_price": null
     },
