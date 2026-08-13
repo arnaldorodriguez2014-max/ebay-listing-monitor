@@ -265,6 +265,29 @@
       "language": "english",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "Psyduck #20 WOTC Black Star Promo (English, 2000)",
+      "_note": "Pokemon, English vintage (WOTC Black Star Promo #20 / 20/53, Pokemon League release 2000, non-holo, illus. Kagemaru Himeno). Bare '20' is UNSAFE: years 2000/2019/2025 all normalize to CONTAIN '20', and modern Psyduck promos (2025 Mega Evolution #007, 2019 Detective Pikachu SM199) ALSO say 'Black Star Promo', so they'd match psyduck+blackstar+20 via the year. Dual defense: the clean self-sufficient '20/53'->'2053' signature, plus match_any covering the other real seller forms (blackstar+20; WOTC-Promo 'wotcp'+20; Pokemon-League+20 for terse 'BS #20' titles with no black-star/wotc token; TCGplayer 'Promo Regular'+20) guarded by a modern-marker exclude wall (mega evolution/mep/enme/007/sm199/detective/scarlet/226-217/039-217/prize pack/van gogh/cosmos). Foreign WOTC #20 prints keep the English name 'Psyduck' but title in German/French ('Pokemon Liga/Ligue') or name the language -> excluded (german/french/italian/spanish/portuguese/dutch/liga/ligue), the Espeon 1/75 precedent. Designed + adversarially verified by a 3-agent workflow (~300 live listings) then independently re-scraped (159 listings: 129 real #20 matched, 9 correctly excluded [modern MEP/SM199/Portuguese], 0 real #20 wrongly killed); FN=0 FP=0 on a 41-TRUE/37-FALSE battery. Vintage PSA 8/9 & CGC 9 -> other_graded, won't alert (raw + PSA10/BGS10/BGS9.5/CGC10 only). Documented edges: (a) a terse modern listing with only a bare year and no set marker could leak; (b) a real #20 slab whose CERT number happens to contain '007' would be missed — unobserved in live data (mid-value card, cert# rarely in title).",
+      "queries": [
+        "psyduck wotc black star promo 20",
+        "psyduck 20/53 black star promo",
+        "psyduck pokemon league promo 20",
+        "psyduck wotc promo #20"
+      ],
+      "match_any": [
+        ["psyduck", "2053"],
+        ["psyduck", "blackstar", "20"],
+        ["psyduck", "wotcp", "20"],
+        ["psyduck", "pokemonleague", "20"],
+        ["psyduck", "promoregular", "20"]
+      ],
+      "exclude": ["mega evolution", "007", "mep", "enme", "sm199", "detective", "scarlet", "226/217", "039/217", "prize pack", "van gogh", "cosmos", "german", "french", "italian", "spanish", "portuguese", "dutch", "liga", "ligue"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
+      "_language_note": "language 'english' (keeps english+unknown, drops JP/CJK) — most real #20 listings scrape as 'unknown' (no language word) and stay in; foreign WOTC #20 prints that keep the English name 'Psyduck' are cut by the german/french/italian/spanish/portuguese/dutch + liga/ligue excludes.",
+      "language": "english",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }

@@ -38,6 +38,7 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Karen's Umbreon 091/141** — 2001 **Japanese** Pokémon Card VS, Holo (1st Ed / Unlimited; not the 232/091 Mew or the adjacent Karen's siblings)
 - **Leafeon AR CBB2C-07 15/15** — **Chinese** Gem Pack Vol.2 exclusive (keyed on the Leafeon-specific `07` code + `15/15`, since all four ARs share 15/15)
 - **Growlithe #058 Vending Series 3** — **Japanese** 1998 Vending Machine promo, glossy (keyed on `growlithe` + `vending` + Series 3; the `58` is just Growlithe's Pokédex number)
+- **Psyduck #20 WOTC Black Star Promo** — **English** 2000 Pokémon League promo (`20/53`; excludes the modern Mega Evolution #007 / Detective SM199 Psyduck promos that also say "Black Star", since the year `2025`/`2019` supplies a stray "20")
 
 > Vintage grade note: for the older Rayquaza cards (3/17, 123/124), graded copies are
 > commonly **PSA 8/9**, which the house grade buckets treat as "other" and don't alert
