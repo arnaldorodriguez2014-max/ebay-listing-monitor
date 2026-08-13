@@ -68,6 +68,14 @@ of whether any local machine is on:
   while a job is running, with ~30-min gaps between jobs. For true near-zero delay,
   run the loop on an always-on host instead (see "Local setup"). Scans fetch all
   watches concurrently (`scan_workers`, default 6), so a full pass takes ~15-20s.
+- **Fast tier:** between full passes, the loop rescans only the **priority** watches
+  (those with `price_alerts`, or an explicit `"priority": true`) every
+  `priority_interval_seconds` (default 30). This cuts detection of under-target deals to
+  ~30s for those watches while the rest stay at `poll_interval_seconds` — concentrating
+  the extra scraping on the few watches that matter keeps the eBay soft-block risk low.
+  Set `priority_interval_seconds` to `0` to disable it. (Note: truly-underpriced cards can
+  still sell within seconds to snipers — faster polling catches the 1-3-min deals, not the
+  sub-minute ones, which only an instant-buy bot could win.)
 - **Webhook:** stored as the encrypted GitHub Actions secret `DISCORD_WEBHOOK_URL`
   — it is **not** in the public code (`config.json`'s `discord_webhook_url` is left
   blank; the script reads the env var first).
@@ -222,6 +230,9 @@ Add entries to the `watches` array in `config.json`:
   gate entirely). Use for import-only cards (Japanese/Chinese exclusives) that are
   mostly sold overseas, where a US/CA filter would hide nearly every listing.
 - `price_drop_pct` / `price_drop_min` — per-watch override of the drop thresholds.
+- `priority` — set `true` to put this watch on the **fast-poll tier** (see
+  `priority_interval_seconds` below). Watches with `price_alerts` are automatically on it,
+  so under-target deals are detected/pinged sooner without speeding up every watch.
 - `price_alerts` — per-watch list of **absolute price targets that @mention someone
   on Discord**. Each rule is `{"grade": <bucket, optional>, "below": <USD>, "mention":
   "<discord id>"}` and fires when a matched listing of that grade is priced strictly

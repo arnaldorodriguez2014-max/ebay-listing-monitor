@@ -1306,7 +1306,15 @@ def price_alert_hit(rules, grade, price):
     return None
 
 
-def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
+def priority_watches(cfg):
+    """Watches for the fast-poll tier: those with a price-target @mention (`price_alerts`)
+    or an explicit `"priority": true`. Empty -> no fast tier. Concentrating the extra
+    scraping on just these keeps under-target deals detected sooner without ~doubling the
+    whole scrape rate (and its eBay soft-block risk)."""
+    return [w for w in cfg.get("watches", []) if w.get("priority") or w.get("price_alerts")]
+
+
+def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False, full_scan=True):
     # Prefer the env var (used by the cloud/GitHub Actions deploy so the webhook
     # stays out of the public repo); fall back to config.json for local runs.
     webhook = os.environ.get("DISCORD_WEBHOOK_URL") or cfg.get("discord_webhook_url", "")
@@ -1699,6 +1707,12 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         total_matched += matched
         total_alerts += new_count + drop_count + below_count + pa_count
 
+    if not full_scan:
+        # Priority sub-scan (fast tier): the per-listing alerts + dedup writes above already
+        # happened; skip the WHOLE-scan housekeeping (baseline retirement / prune / market
+        # notice / health), which needs the full watch set and runs on the next full scan.
+        return total_alerts
+
     # --- after all watches: prune stale rows + health check on the whole scan ---
     if ask_baseline:
         meta_set(conn, "ask_baseline_done", "1")
@@ -1876,23 +1890,39 @@ def main():
         return
 
     interval = int(cfg.get("poll_interval_seconds", 300))
+    # Fast tier: between full scans, rescan just the priority (price-target) watches every
+    # `priority_interval_seconds` so under-target deals ping sooner. 0/absent disables it.
+    prio_interval = int(cfg.get("priority_interval_seconds", 0) or 0)
+    prio = priority_watches(cfg) if prio_interval > 0 else []
+    prio_cfg = {**cfg, "watches": prio} if prio else None
 
     if args.loop_for_minutes is not None:
         # Bounded loop for scheduled/CI use: keep scanning until the budget is spent,
         # then exit cleanly so the caller can persist state. Always runs at least one
-        # pass, and never starts a pass it can't finish inside the window.
+        # full pass, and never starts a FULL pass it can't finish inside the window.
         deadline = time.monotonic() + args.loop_for_minutes * 60
-        passes = 0
+        tick = prio_interval if prio_cfg else interval
+        last_full = None
+        passes = full_passes = prio_passes = 0
         while True:
+            now = time.monotonic()
+            due_full = last_full is None or (now - last_full) >= interval
+            can_full = last_full is None or (deadline - now) >= interval
             try:
-                scan_once(cfg, conn, notify_existing=args.notify_existing)
+                if due_full and can_full:
+                    scan_once(cfg, conn, notify_existing=args.notify_existing)
+                    last_full = time.monotonic(); full_passes += 1
+                elif prio_cfg:
+                    scan_once(prio_cfg, conn, notify_existing=args.notify_existing, full_scan=False)
+                    prio_passes += 1
             except Exception as e:
                 print(f"scan error: {e}", file=sys.stderr)
             passes += 1
-            if time.monotonic() + interval >= deadline:
+            if (deadline - time.monotonic()) <= tick:
                 break
-            time.sleep(interval)
-        print(f"loop finished: {passes} pass(es) over {args.loop_for_minutes:g} min.")
+            time.sleep(tick)
+        print(f"loop finished: {passes} pass(es) ({full_passes} full, {prio_passes} priority) "
+              f"over {args.loop_for_minutes:g} min.")
         return
 
     print(f"Starting eBay monitor. Interval={interval}s. Watches={[w['name'] for w in cfg['watches']]}")

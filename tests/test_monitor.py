@@ -887,6 +887,43 @@ except Exception as _roe:
     ok(f"scan_once survives a bad reference_override (raised {_roe!r})", False)
 m.get_market_prices, m.active_asking_reference, m.send_discord = _ro_g, _ro_a, _ro_s
 
+print("== priority fast-tier (full_scan=False) ==")
+ok("priority_watches picks price_alert + explicit-priority watches",
+   [w["name"] for w in m.priority_watches({"watches": [
+       {"name": "A", "price_alerts": [{"below": 1}]}, {"name": "B"}, {"name": "C", "priority": True}]})] == ["A", "C"])
+ok("priority_watches empty when none", m.priority_watches({"watches": [{"name": "B"}]}) == [])
+_pdb = os.path.join(tempfile.gettempdir(), "ebay_test_prio.db")
+if os.path.exists(_pdb):
+    os.remove(_pdb)
+m.DB_PATH = _pdb
+_pconn = m.db_connect()
+for _k in ("ask_baseline_done", "cgc10_baseline_done"):
+    m.meta_set(_pconn, _k, "1")
+m.meta_set(_pconn, "health", "ok")
+_pg, _pa2, _ps2, _pss = m.get_market_prices, m.active_asking_reference, m.send_discord, m.send_simple_discord
+m.get_market_prices = lambda *a, **k: {}
+m.active_asking_reference = lambda *a, **k: {}
+m.send_simple_discord = lambda *a, **k: None   # health-down path -> don't hit the network
+_psent = []
+m.send_discord = lambda url, name, lst, grade, **k: _psent.append(lst["item_id"])
+_pconn.execute("INSERT INTO seen(watch,item_id,grade,first_seen,price,price_str,last_seen,"
+               "below_alerted,price_alerted) VALUES('PR','dec','psa10','2026-01-01T00:00:00',9,'$9','2026-01-01',0,0)")
+_pconn.commit()   # decoy so it isn't a silent first run
+_pcfg = {"discord_webhook_url": "https://discord.test/wh", "ebay_domain": "www.ebay.com", "watches": [{
+    "name": "PR", "require": ["232/091"], "grades": ["ungraded", "psa10"], "language": "any",
+    "allow_unknown_region": True}]}
+m.fetch_all = lambda d, w, **k: [{"item_id": "p1", "title": "Mew ex 232/091 PSA 10", "price_str": "$50",
+    "price_low": 50.0, "currency": "USD", "url": "http://x", "image": None, "condition": None,
+    "shipping": None, "bids": None, "format": None, "location": "USA"}]
+m.scan_once(_pcfg, _pconn, full_scan=False)
+ok("priority sub-scan still alerts a new listing", "p1" in _psent)
+m.fetch_all = lambda d, w, **k: []          # a 0-scraped priority sub-scan must NOT flip health
+m.scan_once(_pcfg, _pconn, full_scan=False)
+ok("priority sub-scan skips the health check (no false down)", m.meta_get(_pconn, "health") == "ok")
+m.scan_once(_pcfg, _pconn, full_scan=True)   # ...but a full 0-scraped scan does flag it
+ok("full scan still runs the health check", m.meta_get(_pconn, "health") == "down")
+m.get_market_prices, m.active_asking_reference, m.send_discord, m.send_simple_discord = _pg, _pa2, _ps2, _pss
+
 print("\n==== RESULT ====")
 if fails:
     print("FAILURES:", fails)
