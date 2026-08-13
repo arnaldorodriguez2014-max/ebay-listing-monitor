@@ -554,6 +554,17 @@ def _parse_sold_date(li_text):
 _CURRENCY_PATTERNS = [
     ("CAD", re.compile(r"\bC\s*\$|\bCA\s*\$|\bCAD\b", re.IGNORECASE)),
     ("AUD", re.compile(r"\bAU\s*\$|\bAUD\b", re.IGNORECASE)),
+    # Other dollar-family currencies overseas sellers render (mostly on all_regions/
+    # worldwide watches). Prefix-qualified so they're recognised as their OWN code before
+    # the bare "$" USD catch-all — otherwise "HK $95"/"NT$990"/"R$50" all read as 95/990/50
+    # USD and pollute the (USD) references / fake below-market + price-target alerts. The
+    # multi-letter prefixes precede the single-letter S$ (SGD) / R$ (BRL) so they win.
+    ("HKD", re.compile(r"\bHK\s*\$|\bHKD\b", re.IGNORECASE)),
+    ("NZD", re.compile(r"\bNZ\s*\$|\bNZD\b", re.IGNORECASE)),
+    ("TWD", re.compile(r"\bNT\s*\$|\bTWD\b", re.IGNORECASE)),
+    ("MXN", re.compile(r"\bMX\s*\$|\bMXN\b", re.IGNORECASE)),
+    ("SGD", re.compile(r"\bS\s*\$|\bSGD\b", re.IGNORECASE)),
+    ("BRL", re.compile(r"\bR\s*\$|\bBRL\b", re.IGNORECASE)),
     ("GBP", re.compile(r"£|\bGBP\b")),
     ("EUR", re.compile(r"€|\bEUR\b")),
     # Yen (¥ / 円) and Won (₩): eBay can serve these to non-US-geo callers. If not
@@ -910,6 +921,10 @@ def _market_circuit_open(conn, now):
                 return True, state
         except Exception:
             pass
+        # Cooldown lapsed (or unparseable) -> start fresh. If we returned the stale
+        # {"fails": N>=threshold} here, the very next failure would re-trip the breaker
+        # immediately, so the N-consecutive-failures guard would only ever work once.
+        return False, {"fails": 0, "until": None}
     return False, state
 
 
@@ -1051,10 +1066,19 @@ def mark_seen(conn, watch, item_id, grade, price=None, price_str=None, below_ale
 # ---------------------------------------------------------------------------
 
 def _post_webhook(webhook_url, payload, attempts=4):
-    """POST to Discord, backing off correctly on 429 (whose body may be HTML)."""
+    """POST to Discord, backing off on 429 (whose body may be HTML), Discord 5xx, and
+    transient connection errors — so a one-off blip doesn't drop a health/market notice
+    (listing alerts already retry next scan, but the plain notices are fire-and-forget)."""
     resp = None
-    for _ in range(attempts):
-        resp = requests.post(webhook_url, json=payload, timeout=20)
+    for i in range(attempts):
+        last = i == attempts - 1
+        try:
+            resp = requests.post(webhook_url, json=payload, timeout=20)
+        except requests.RequestException:
+            if last:
+                raise
+            time.sleep(min(2 ** i, 30) + 0.5)
+            continue
         if resp.status_code == 429:
             retry = None
             try:
@@ -1067,6 +1091,9 @@ def _post_webhook(webhook_url, payload, attempts=4):
                 except Exception:
                     retry = 1.0
             time.sleep(min(retry, 30) + 0.5)
+            continue
+        if 500 <= resp.status_code < 600 and not last:
+            time.sleep(min(2 ** i, 30) + 0.5)   # transient Discord server error -> back off
             continue
         resp.raise_for_status()
         return
@@ -1195,7 +1222,7 @@ def send_discord(webhook_url, watch_name, listing, grade,
         fields.append({"name": ref_field, "value": mv, "inline": True})
 
     embed = {
-        "author": {"name": author},
+        "author": {"name": author[:256]},   # Discord rejects the whole webhook past 256
         "title": listing["title"][:250],
         "url": url,
         "color": color,
@@ -1243,7 +1270,8 @@ def parse_price_alerts(watch):
     """Normalize a watch's optional `price_alerts` into a list of rules.
 
     Each config rule is {"grade": <bucket or omitted for any>, "below": <price>,
-    "mention": <Discord user/role id, optional>}. A rule fires (and @mentions) when a
+    "mention": <Discord USER id, optional>}. (Only user mentions are wired — a role id
+    would need the <@&id> form; see send_discord.) A rule fires (and @mentions) when a
     matched listing of that grade is priced strictly BELOW `below`. Returns a list of
     {"grade", "below", "mention"} with grade normalized (or None = any). Malformed
     rules (no numeric `below`) are dropped silently so one typo can't break the scan.
@@ -1412,8 +1440,12 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         # much. Takes precedence over sold/asking; shown as "Reference (set)".
         for g, val in (watch.get("reference_override") or {}).items():
             gk = g.lower().replace(" ", "")
-            if val is not None and gk in wanted:
-                refs[gk] = (float(val), "manual")
+            if val is None or gk not in wanted:
+                continue
+            try:
+                refs[gk] = (float(val), "manual")   # tolerate a config typo ("$75", "n/a")
+            except (TypeError, ValueError):          # rather than wedge this + all later watches
+                print(f"[{ts}] [{name}] bad reference_override {g!r}={val!r} — ignored.", file=sys.stderr)
         to_seed = []          # brand-new items to bulk-insert
         price_updates = []    # (price, price_str, item_id) baselines / post-drop
         refresh_ids = []      # seen items observed this scan (refresh last_seen)
@@ -1775,6 +1807,16 @@ def validate_config(cfg):
         for g in w.get("grades", []):
             if g.lower().replace(" ", "") not in valid_grades:
                 warnings.append(f"{tag}: unknown grade {g!r}")
+        ro = w.get("reference_override")
+        if ro is not None:
+            if not isinstance(ro, dict):
+                warnings.append(f"{tag}: 'reference_override' must be an object")
+            else:
+                for g, val in ro.items():
+                    try:
+                        float(val)
+                    except (TypeError, ValueError):
+                        warnings.append(f"{tag}: reference_override[{g!r}]={val!r} is not numeric")
         pa = w.get("price_alerts")
         if pa is not None:
             watch_grades = {g.lower().replace(" ", "") for g in w.get("grades", [])}

@@ -196,6 +196,15 @@ check("currency AUD", m.parse_price("AU $120.00")[2], "AUD")
 check("currency JPY yen", m.detect_currency("¥893,534"), "JPY")
 check("currency JPY code", m.detect_currency("JPY 749,136"), "JPY")
 check("currency KRW won", m.detect_currency("₩120,000"), "KRW")
+# other dollar-family currencies must NOT be swallowed by the bare-$ USD catch-all (audit fix)
+check("currency HKD", m.detect_currency("HK $95.00"), "HKD")
+check("currency SGD", m.detect_currency("S$ 80.00"), "SGD")
+check("currency NZD", m.detect_currency("NZ $120.00"), "NZD")
+check("currency TWD", m.detect_currency("NT$ 990"), "TWD")
+check("currency MXN", m.detect_currency("MX$ 1,500.00"), "MXN")
+check("currency BRL", m.detect_currency("R$ 50,00"), "BRL")
+check("US $ still USD (not SGD)", m.detect_currency("US $95.00"), "USD")
+check("bare $ still USD", m.detect_currency("$95.00"), "USD")
 check("currency none", m.parse_price("90.00")[2], None)
 ok("active search forces US-located items", "LH_PrefLoc=1" in m.build_search_url("www.ebay.com", "x"))
 ok("sold search not US-forced", "LH_PrefLoc" not in m.build_search_url("www.ebay.com", "x", sold=True))
@@ -213,6 +222,51 @@ ok("flags missing queries", any("no 'queries'" in w for w in warns))
 ok("flags match-all", any("match EVERY" in w for w in warns))
 ok("flags bad grade", any("unknown grade" in w for w in warns))
 ok("flags bad region", any("unrecognized region" in w for w in warns))
+# non-numeric reference_override is surfaced up front (companion to the runtime guard; audit fix)
+_row = m.validate_config({"watches": [{"name": "R", "queries": ["x"], "require": ["a"],
+    "grades": ["ungraded"], "reference_override": {"ungraded": "$75"}}]})
+ok("flags bad reference_override", any("reference_override" in w and "numeric" in w for w in _row))
+
+print("== discord sender (author cap + transient-error retry) ==")
+_cap = []
+_real_post = m._post_webhook
+m._post_webhook = lambda url, payload, **k: _cap.append(payload)
+_L = {"item_id": "1", "title": "T", "url": "http://x", "price_str": "$1", "price_low": 1.0,
+      "shipping": None, "condition": None, "location": None, "image": None}
+m.send_discord("http://wh", "W" * 300, _L, "psa10")   # 300-char watch name
+ok("author.name capped <=256", len(_cap[0]["embeds"][0]["author"]["name"]) <= 256)
+m._post_webhook = _real_post
+# _post_webhook retries transient 5xx / connection errors (not just 429), then succeeds
+class _Resp:
+    def __init__(s, code): s.status_code = code; s.headers = {}
+    def json(s): return {}
+    def raise_for_status(s):
+        if s.status_code >= 400: raise Exception(f"HTTP {s.status_code}")
+_saved_post, _saved_sleep = m.requests.post, m.time.sleep
+m.time.sleep = lambda *a, **k: None
+_seq = [_Resp(500), _Resp(503), _Resp(200)]; _n = {"i": 0}
+def _fp(url, **k):
+    r = _seq[_n["i"]]; _n["i"] += 1; return r
+m.requests.post = _fp
+m._post_webhook("http://wh", {"x": 1})
+ok("webhook retries 5xx then succeeds", _n["i"] == 3)
+_n2 = {"i": 0}
+def _fp_conn(url, **k):
+    _n2["i"] += 1
+    if _n2["i"] == 1:
+        raise m.requests.exceptions.ConnectionError("reset")
+    return _Resp(200)
+m.requests.post = _fp_conn
+m._post_webhook("http://wh", {"x": 1})
+ok("webhook retries a connection error", _n2["i"] == 2)
+_n3 = {"i": 0}
+m.requests.post = lambda url, **k: (_n3.__setitem__("i", _n3["i"] + 1), _Resp(500))[1]
+try:
+    m._post_webhook("http://wh", {"x": 1}); _persistent_raised = False
+except Exception:
+    _persistent_raised = True
+ok("webhook still raises on persistent 5xx (fail-visible)", _persistent_raised and _n3["i"] == 4)
+m.requests.post, m.time.sleep = _saved_post, _saved_sleep
 
 # --------------------------------------------------------------------------
 print("== scan_once: new-listing + dedup + price-drop (mocked) ==")
@@ -520,6 +574,17 @@ res = m.get_market_prices(conn, "www.ebay.com", cw, ["ungraded"])
 ok("open breaker skips the network entirely", blocked["n"] == before_n)
 ok("open breaker reports no market price", res["ungraded"] is None)
 
+# When the cooldown LAPSES the fail counter must reset — else the next single failure
+# re-trips the breaker (the N-consecutive guard would only work once). (audit fix)
+_past = (m.datetime.now(m.timezone.utc) - m.timedelta(hours=1)).isoformat()
+m.meta_set(conn, "market_circuit", '{"fails": %d, "until": "%s"}' % (m.MARKET_FAIL_THRESHOLD, _past))
+_lapsed_open, _lapsed_st = m._market_circuit_open(conn, m.datetime.now(m.timezone.utc))
+ok("lapsed cooldown -> not open", not _lapsed_open)
+ok("lapsed cooldown -> fails reset to 0", int(_lapsed_st.get("fails", 0)) == 0)
+m._market_record_result(conn, _lapsed_st, False, m.datetime.now(m.timezone.utc))
+_reopen, _ = m._market_circuit_open(conn, m.datetime.now(m.timezone.utc))
+ok("single failure after lapse does NOT immediately re-open", not _reopen)
+
 # A successful round resets the breaker.
 m.meta_set(conn, "market_circuit", '{"fails": 0, "until": null}')
 m.fetch_sold_sales = lambda d, w: [(f"2026-07-{i:02d}", 42.0, "ungraded") for i in range(1, 6)]
@@ -791,6 +856,36 @@ ok("sealed: under-min_price single rejected", "cheap" not in _sids)
 ok("sealed: campaign promo collection rejected", "camp" not in _sids)
 
 m.get_market_prices, m.active_asking_reference, m.send_discord = _sv_gmp, _sv_aar, _sv_send
+
+# a non-numeric reference_override must NOT crash the scan (it wedges this + all later
+# watches in the CI loop). The runtime guard skips it and keeps scanning. (audit fix)
+_rodb = os.path.join(tempfile.gettempdir(), "ebay_test_ro.db")
+if os.path.exists(_rodb):
+    os.remove(_rodb)
+m.DB_PATH = _rodb
+_roconn = m.db_connect()
+m.meta_set(_roconn, "ask_baseline_done", "1")
+_ro_g, _ro_a, _ro_s = m.get_market_prices, m.active_asking_reference, m.send_discord
+m.get_market_prices = lambda *a, **k: {}
+m.active_asking_reference = lambda *a, **k: {}
+_ro_sent = []
+m.send_discord = lambda url, name, lst, grade, **k: _ro_sent.append(lst["item_id"])
+m.fetch_all = lambda d, w, **k: [{"item_id": "r1", "title": "Mew ex 232/091 PSA 10",
+    "price_str": "$50", "price_low": 50.0, "currency": "USD", "url": "http://x", "image": None,
+    "condition": None, "shipping": None, "bids": None, "format": None, "location": "USA"}]
+_ro_cfg = {"discord_webhook_url": "https://x", "ebay_domain": "www.ebay.com", "watches": [{
+    "name": "RO", "require": ["232/091"], "grades": ["ungraded", "psa10"], "language": "any",
+    "allow_unknown_region": True, "reference_override": {"ungraded": "oops"}}]}
+_roconn.execute("INSERT INTO seen(watch,item_id,grade,first_seen,price,price_str,last_seen,"
+                "below_alerted,price_alerted) VALUES('RO','dec','psa10','2026-01-01T00:00:00',9,'$9','2026-01-01',0,0)")
+_roconn.commit()   # decoy so it isn't a silent first run
+try:
+    m.scan_once(_ro_cfg, _roconn)
+    ok("scan_once survives a bad reference_override", True)
+    ok("...and still alerts the new listing", "r1" in _ro_sent)
+except Exception as _roe:
+    ok(f"scan_once survives a bad reference_override (raised {_roe!r})", False)
+m.get_market_prices, m.active_asking_reference, m.send_discord = _ro_g, _ro_a, _ro_s
 
 print("\n==== RESULT ====")
 if fails:
