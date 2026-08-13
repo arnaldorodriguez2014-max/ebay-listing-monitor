@@ -177,8 +177,12 @@ _SEP = r"[\s\-.]*"
 # keeps "PSA Graded 10 Cards Lot" out of the psa10 bucket.
 _PSA_LABEL = r"(?:(?:GEM|MINT|MT|GM|GRADE)" + _SEP + r")*"
 _PSA10 = re.compile(r"\bPSA" + _SEP + _PSA_LABEL + r"10\b")
-_BGS95 = re.compile(r"\b(?:BGS|BECKETT)" + _SEP + r"9\.5\b")
-_BGS10 = re.compile(r"\b(?:BGS|BECKETT)" + _SEP + r"10\b")
+# Beckett puts its grade word BEFORE the number too ("BGS Gem Mint 9.5", "BGS Pristine 10",
+# "Beckett Black Label 10"), so allow the same bounded grade-word run PSA/CGC do. Only grade
+# WORDS (not "GRADE"/"GRADED") so "Beckett Graded 10 Cards Lot" stays other_graded.
+_BGS_LABEL = r"(?:(?:GEM|MINT|MT|GM|PRISTINE|PERFECT|BLACK|LABEL)" + _SEP + r")*"
+_BGS95 = re.compile(r"\b(?:BGS|BECKETT)" + _SEP + _BGS_LABEL + r"9\.5\b")
+_BGS10 = re.compile(r"\b(?:BGS|BECKETT)" + _SEP + _BGS_LABEL + r"10\b")
 # CGC 10 comes in two tiers — "CGC 10 Gem Mint" and the all-10-subgrades "CGC 10
 # Pristine" (also "Perfect") — both are grade-10 slabs, so bucket either as cgc10.
 # The label class only spans grade WORDS, so "CGC 9.5" still falls through to
@@ -232,14 +236,17 @@ _LANG_JP = re.compile(r"\b(japanese|japan|jpn|jp)\b", re.IGNORECASE)
 _LANG_CN = re.compile(r"\b(chinese|china|chn|cn)\b", re.IGNORECASE)
 _LANG_KR = re.compile(r"\b(korean|korea|kor)\b", re.IGNORECASE)
 _LANG_EN = re.compile(r"\b(english|eng)\b", re.IGNORECASE)
-# Sellers of English cards often write "English NOT Japanese" / "not a Japan import";
-# the bare foreign word would otherwise flip the listing to that language and get it
-# dropped by an English-only watch. Strip negated mentions before detecting. The
-# trailing group extends the strip across an ENUMERATED run ("not Japanese Chinese",
-# "not Japanese/Korean") so a trailing language can't survive and win detection.
+# Sellers of English cards often write "English NOT Japanese" / "not a Japan import" /
+# "not the Japanese version"; the bare foreign word would otherwise flip the listing to
+# that language and get it dropped by an English-only watch. Strip negated mentions before
+# detecting. The optional filler allows ONE determiner/"from" between "not" and the language
+# word ("not the/this/that/these/those/any/a/an Japanese", "not from Japan"); a single token
+# keeps it from over-stripping "not the cheap Japanese knockoff" (an intervening non-language
+# word blocks the match). The trailing group extends the strip across an ENUMERATED run
+# ("not Japanese Chinese", "not Japanese/Korean") so a trailing language can't survive.
 _NEG_LW = r"(?:japanese|japan|jpn|jp|chinese|china|chn|cn|korean|korea|kor)"
 _NEG_LANG = re.compile(
-    r"\bno[tn]\s+(?:an?\s+|from\s+)?" + _NEG_LW
+    r"\bno[tn]\s+(?:(?:an?|the|this|that|these|those|any)\s+|from\s+)?" + _NEG_LW
     + r"(?:\s*(?:[/,&]|or|nor|and)?\s*" + _NEG_LW + r")*\b"
     r"|\bnon[-\s]?(?:japanese|japan|chinese|china|korean|korea)\b",
     re.IGNORECASE,
@@ -349,14 +356,14 @@ def is_lot(title: str) -> bool:
 # watches no longer each re-list these terms.
 _BULK_SEALED_RE = re.compile(
     r"\b(?:"
-    r"booster box|booster bundle|booster pack|"
-    r"elite trainer box|elite trainer|etb|"
-    r"premium collection|ultra premium collection|collection box|"
+    r"booster box(?:es)?|booster bundles?|booster packs?|"
+    r"elite trainer box(?:es)?|elite trainer|etb|"
+    r"premium collection|ultra premium collection|collection box(?:es)?|"
     r"build ?(?:&|and) ?battle|"
-    r"master set|complete set|master collection|cards? collection|"
-    r"bulk|playset|"
-    r"lot of \d+|\d+ ?cards? lot|cards? lot|(?<!not a )lot|"
-    r"bundle|jumbo|oversized"
+    r"master set|complete set|master collection|cards? collections?|"
+    r"bulk|playsets?|"
+    r"lot of \d+|\d+ ?cards? lots?|cards? lots?|(?<!not a )lots?|"
+    r"bundles?|jumbos?|oversized"
     r")\b",
     re.IGNORECASE,
 )
@@ -815,12 +822,6 @@ def median_recent_price(sales, grade, recent_n=15, min_sales=3):
     if len(core) < min_sales:
         core = recent                             # too aggressive — fall back
     return round(_median(core), 2)
-
-
-def compute_market_price(domain, watch, grade="ungraded", recent_n=15, min_sales=3):
-    """Recent-sold median for a single grade bucket (default ungraded), or None."""
-    sales = fetch_sold_sales(domain, watch)
-    return median_recent_price(sales, grade, recent_n, min_sales)
 
 
 def _percentile(values, pct):
@@ -1347,15 +1348,15 @@ def scan_once(cfg, conn, dry_run=False, notify_existing=False, reseed=False):
         listings = fetched.get(wi, [])
         total_scraped += len(listings)
 
-        # Load this watch's seen items as {item_id: (price, price_str, below_alerted)}
-        # in one query (also serves as the dedup set).
-        seen_prices = {row[0]: (row[1], row[2], row[3]) for row in
-                       conn.execute("SELECT item_id, price, price_str, below_alerted FROM seen WHERE watch=?", (name,))}
-        # price_alerted flags, parallel to seen_prices (kept separate so the existing
-        # 3-tuple stays untouched). Drives the price-target @mention dedup: ping once per
-        # crossing below target, not every scan while the listing stays under it.
-        pa_flags = {row[0]: (row[1] or 0) for row in
-                    conn.execute("SELECT item_id, price_alerted FROM seen WHERE watch=?", (name,))}
+        # Load this watch's seen items in ONE query (also serves as the dedup set).
+        # seen_prices = {item_id: (price, price_str, below_alerted)}; pa_flags kept as a
+        # parallel {item_id: price_alerted} dict (separate shape drives the price-target
+        # @mention dedup: ping once per crossing below target, not every scan while under it).
+        _rows = conn.execute(
+            "SELECT item_id, price, price_str, below_alerted, price_alerted FROM seen WHERE watch=?",
+            (name,)).fetchall()
+        seen_prices = {r[0]: (r[1], r[2], r[3]) for r in _rows}
+        pa_flags = {r[0]: (r[4] or 0) for r in _rows}
         price_alerts = parse_price_alerts(watch)
 
         # Seed silently (mark matches seen, no alerts) on a watch's first run, or

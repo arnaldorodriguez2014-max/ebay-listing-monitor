@@ -49,7 +49,12 @@ def discord(msg):
 
 
 def recent_runs():
-    """Recent monitor.yml runs via the GitHub CLI, newest first (or [] on error)."""
+    """Recent monitor.yml runs via the GitHub CLI, newest first.
+
+    Returns a list (possibly empty = genuinely no runs found) on success, or None if the
+    gh call ERRORED — the caller distinguishes these so a persistent gh failure falls back
+    to a gh-independent staleness signal instead of silently skipping all checks.
+    """
     try:
         out = subprocess.check_output(
             ["gh", "run", "list", "--workflow", "monitor.yml", "-L", "5",
@@ -58,7 +63,26 @@ def recent_runs():
         return json.loads(out)
     except Exception as e:
         print(f"watchdog: could not list runs: {e}", file=sys.stderr)
-        return []
+        return None
+
+
+def seen_db_commit_age_hours():
+    """Age in hours of the newest seen.db commit, or None if unreadable.
+
+    A gh-independent liveness proxy: each scan bumps seen.db (the per-scan
+    zero_match_streak meta write changes the DB), so it's committed ~once per run.
+    """
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", HERE, "log", "-1", "--format=%ct", "--", "seen.db"],
+            text=True, timeout=30).strip()
+        if not out:
+            return None
+        commit = datetime.fromtimestamp(int(out), tz=timezone.utc)
+        return (datetime.now(timezone.utc) - commit).total_seconds() / 3600
+    except Exception as e:
+        print(f"watchdog: seen.db commit-age read failed: {e}", file=sys.stderr)
+        return None
 
 
 def main():
@@ -76,9 +100,21 @@ def main():
         completed = [r for r in runs if r.get("status") == "completed"]
         if completed and completed[0].get("conclusion") == "failure":
             problems.append("The most recent completed monitor run FAILED — the job is crashing.")
+    elif runs is None:
+        # gh ERRORED — fall back to a gh-independent liveness signal (seen.db commit
+        # recency) so a stopped monitor is still caught. Wide threshold (2x) avoids false
+        # alarms on quiet periods / a single transient gh blip within the window.
+        age_h = seen_db_commit_age_hours()
+        if age_h is not None and age_h > 2 * STALE_HOURS:
+            problems.append(
+                f"gh CLI is unavailable AND seen.db hasn't been committed in {age_h:.1f}h — "
+                "the monitor appears stopped (can't confirm via GitHub API).")
+        else:
+            print("watchdog: gh unavailable; seen.db commit recency within threshold "
+                  f"(age={age_h if age_h is None else f'{age_h:.1f}h'}).")
     else:
-        # gh returned nothing; note it but don't hard-alert (could be a transient API/auth issue)
-        print("watchdog: no run data available (skipping recency/failure checks).")
+        # runs == [] : gh succeeded but found no runs — note it, don't hard-alert.
+        print("watchdog: gh returned no monitor runs (skipping recency/failure checks).")
 
     try:
         if os.path.exists(DB):

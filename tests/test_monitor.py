@@ -43,6 +43,13 @@ def ok(name, cond):
 
 # --------------------------------------------------------------------------
 print("== classify_grade ==")
+# BGS/Beckett grade word BEFORE the number ("BGS Gem Mint 9.5", "BGS Pristine 10",
+# "Beckett Black Label 10") must still bucket as bgs9.5/bgs10 (audit fix).
+check("BGS Gem Mint 9.5", m.classify_grade("Charizard BGS Gem Mint 9.5"), "bgs9.5")
+check("BGS Pristine 10", m.classify_grade("Charizard BGS Pristine 10"), "bgs10")
+check("Beckett Black Label 10", m.classify_grade("Espeon Beckett Black Label 10"), "bgs10")
+check("BGS GEM MT 9.5", m.classify_grade("Lugia BGS GEM MT 9.5"), "bgs9.5")
+check("Beckett Graded 10 lot stays other", m.classify_grade("Beckett Graded 10 Cards Lot"), "other_graded")
 check("PSA 10", m.classify_grade("PSA 10 Luffy ST26-005"), "psa10")
 check("PSA 100 not PSA10", m.classify_grade("Lot of PSA 100 Luffy"), "other_graded")
 check("BGS 9.5", m.classify_grade("Luffy BGS 9.5"), "bgs9.5")
@@ -96,6 +103,15 @@ check("korean hangul -> cjk", m.title_language("루피 카드 OP05-119"), "cjk")
 check("English NOT Japanese", m.title_language("Luffy OP05-119 English NOT Japanese"), "english")
 check("not a Japan import", m.title_language("Luffy OP05-119 not a Japan import English"), "english")
 ok("en keeps 'not japanese'", m.passes_language("Luffy OP05-119 English NOT Japanese", "english"))
+# a determiner between "not" and the language word ("not THE/this/any Japanese") must also
+# be stripped so a genuinely-English listing isn't dropped (audit fix).
+ok("en keeps 'not the japanese'", m.passes_language("Luffy English not the Japanese version", "english"))
+ok("en keeps 'not this japanese'", m.passes_language("Espeon 1/75 Neo Discovery not this Japanese", "english"))
+ok("en keeps 'not any japanese'", m.passes_language("Psyduck #20 not any Japanese reprint", "english"))
+# ...but a NON-determiner word between "not" and the language word must NOT over-strip:
+# a real foreign card is still dropped.
+ok("drops 'not the cheap japanese'", not m.passes_language("Charizard not the cheap Japanese knockoff", "english"))
+ok("drops bare japanese", not m.passes_language("Mew ex 347/190 Japanese SAR", "english"))
 ok("bare japanese still dropped", not m.passes_language("Luffy OP05-119 Japanese", "english"))
 
 print("== matches_filters / require / aliases / match_any ==")
@@ -136,6 +152,13 @@ ok("etb substring not misfire", not m.is_bulk_or_sealed("Pokemon trumpetbandit C
 ok("plain single not sealed", not m.is_bulk_or_sealed("Mew ex 232/091 Paldean Fates SIR NM"))
 ok("'not a lot' single not sealed", not m.is_bulk_or_sealed("Luffy OP05-119 SEC single card not a lot"))
 ok("real bare-word lot still caught", m.is_bulk_or_sealed("Giratina V 186/196 + Palkia lot"))
+# PLURAL sealed/bulk terms must also be caught (the trailing \b previously let plurals slip; audit fix)
+ok("booster boxes plural", m.is_bulk_or_sealed("Lost Origin Booster Boxes chase Giratina V 186/196"))
+ok("booster packs plural", m.is_bulk_or_sealed("Neo Genesis Booster Packs Lugia 9/111"))
+ok("bundles plural", m.is_bulk_or_sealed("Evolving Skies Bundles Rayquaza V 194/203"))
+ok("card lots plural", m.is_bulk_or_sealed("Psyduck #20 WOTC Black Star Card Lots"))
+ok("playsets plural", m.is_bulk_or_sealed("Espeon 1/75 Neo Discovery Playsets"))
+ok("plural 'not a lot' guard still holds", not m.is_bulk_or_sealed("Lugia 9/111 Neo Genesis single not a lot"))
 
 print("== extended-art-case merch exclude ==")
 ok("extended artwork case excluded",
