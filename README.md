@@ -39,6 +39,7 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Leafeon AR CBB2C-07 15/15** — **Chinese** Gem Pack Vol.2 exclusive (keyed on the Leafeon-specific `07` code + `15/15`, since all four ARs share 15/15)
 - **Growlithe #058 Vending Series 3** — **Japanese** 1998 Vending Machine promo, glossy (keyed on `growlithe` + `vending` + Series 3; the `58` is just Growlithe's Pokédex number)
 - **Psyduck #20 WOTC Black Star Promo** — **English** 2000 Pokémon League promo (`20/53`; excludes the modern Mega Evolution #007 / Detective SM199 Psyduck promos that also say "Black Star", since the year `2025`/`2019` supplies a stray "20")
+- **Lugia 9/111 Neo Genesis** — **English** 2000 WOTC Holo Rare (the set's chase card; keyed on `lugia` + `neo genesis`, since `9/111`→`9111` collides with every `X9/111` card and is redundant)
 
 > Vintage grade note: for the older Rayquaza cards (3/17, 123/124), graded copies are
 > commonly **PSA 8/9**, which the house grade buckets treat as "other" and don't alert

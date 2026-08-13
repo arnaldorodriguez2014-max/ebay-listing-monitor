@@ -288,6 +288,23 @@
       "language": "english",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "Lugia 9/111 Neo Genesis Holo Rare (English)",
+      "_note": "Pokemon, English vintage (WOTC Neo Genesis, 2000, Holo Rare) — the set's chase card. Identify by lugia + neo genesis, NOT the number: '9/111' normalizes to '9111', which is a SUBSTRING of every 'X9/111' card (19/111, 79/111, ...), so requiring it both risks those collisions AND drops terse listings — and it's redundant since Lugia is the only Lugia in the set. 'lugia' is an uncommon name, so lugia+neo genesis is precise. Foreign WOTC prints share 9/111 and keep the English name 'Lugia', so exclude german/french/italian/spanish/portuguese/dutch + liga/ligue (the Espeon 1/75 / Psyduck precedent; verified 'liga'/'ligue' are NOT substrings of 'lugia'). Verified offline (6/6 real forms incl. terse no-number matched; Typhlosion/Feraligatr, different-set Lugia 68/64 & 138/195, German/French, lot, sealed, Japanese all rejected) and live-scraped (156 listings -> 130 real matches, 0 non-Lugia name-drop FPs, 0 other-number). Vintage PSA 8/9 & CGC 9 -> other_graded, won't alert (raw + PSA10/BGS10/BGS9.5/CGC10 only). Documented edge: a non-Lugia Neo Genesis listing that name-drops 'Lugia' would match — unobserved in live data.",
+      "queries": [
+        "lugia 9/111 neo genesis holo rare",
+        "lugia neo genesis holo rare 1st edition",
+        "pokemon lugia neo genesis 9/111",
+        "lugia neo genesis holo psa cgc"
+      ],
+      "require": ["lugia", "neo genesis"],
+      "exclude": ["german", "french", "italian", "spanish", "portuguese", "dutch", "liga", "ligue"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
+      "_language_note": "language 'english' + foreign-word excludes: the 9/111 number is shared across WOTC's Western-language prints, so the language markers scope this to English while terse English listings (no language word -> 'unknown') are kept; 'english' additionally drops JP/CJK.",
+      "language": "english",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }
