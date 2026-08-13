@@ -198,25 +198,6 @@
       "max_price": null
     },
     {
-      "name": "Leafeon AR — Gem Pack Vol.2 (CBB2C-07 15/15, CN)",
-      "_note": "Pokemon, Chinese (S-Chinese exclusive). Leafeon AR (叶伊布) from 'Gem Pack Vol.2', card CBB2C-07 15/15. The set's four ARs (Eevee CBB2C-01, Umbreon CBB2C-06, Leafeon CBB2C-07, Sylveon CBB2C-09) ALL carry 15/15, so identity rides on the Leafeon-specific code 07 + the AR number 15/15, NEVER '15/15' alone. match_any Sig A = 'cbb2c07' + '1515' (adjacent-code forms 'CBB2C-07 ... 15/15'). Sig B = leafeon + '071515' (the 07-code+15/15 number smushed, e.g. 'Leafeon AR 07 15/15 CBB2C' where the code is split, or 'Leafeon 07 15/15 Gem Pack Vol.2' with NO 'CBB2C' at all) + (gem pack | cbb2c) for set safety. Rejects the sibling ARs (they lack cbb2c07/071515) even when they name-drop Leafeon, AND the other Leafeon cards in the set (V 07 13/15, Masterball 07 09/15, 07 03/15, Star 07 06/15 — all lack 1515/071515). Verified offline (13T/12F, FN=0 FP=0) and live-scraped (76 real Leafeon AR matched, 0 FP, 0 recall miss). ACE/CGC-9.5/PSA-9 slabs bucket other_graded and won't alert.",
-      "queries": [
-        "leafeon cbb2c-07 15/15 gem pack vol 2",
-        "leafeon 07 15/15 gem pack vol 2 chinese",
-        "pokemon chinese leafeon gem pack vol 2 15/15",
-        "宝可梦 叶伊布 cbb2c-07 15/15"
-      ],
-      "match_any": [
-        ["cbb2c07", "1515"],
-        ["leafeon", "071515", ["gem pack", "cbb2c"]]
-      ],
-      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
-      "_language_note": "language 'any': China-exclusive code/number-identified card (no English/Japanese print). _norm strips CJK, so matching rides on the Latin tokens (CBB2C-07 / 07 15/15 / gem pack) that real Chinese-seller and slab titles include; 'any' keeps the many CJK-tagged listings.",
-      "language": "any",
-      "min_price": null,
-      "max_price": null
-    },
-    {
       "name": "Growlithe #058 Vending Series 3 (Japanese, 1998)",
       "_note": "Pokemon, Japanese vintage (1998 Vending Machine / 自動販売機 promo, Series 3 'Green', glossy). Identify by growlithe + vending + a Series-3-or-number confirm ['series 3','series iii','58']. The card number #58 IS Growlithe's National Dex number (so it's redundant with the name and only ONE Growlithe exists in the Vending line — Series 3), which is why identity keys on the SET ('vending' + 'series 3'), not the number. 'vending' excludes every non-Vending Growlithe (Base Set 28/102, Evolutions 58/108, etc.); the series/number clause excludes a 'Base Set Growlithe, also sell vending cards' cross-promo (no series 3/58). Catches the terse TCGplayer form 'Growlithe Vending Machine Cards Series 3 (Green) Regular' (no number) via 'series 3', and a mislabeled '055' listing (dex 055 is Golduck -> seller typo, same card) via 'series 3'. Rejects other Vending Series 3 Pokemon (Vulpix etc.), lots, sealed. Verified offline (7/7 real forms matched, confusables rejected) and live-scraped (91 real Growlithe matches, 0 non-Growlithe FP, 0 'arcanine' name-drops). Documented edge: an Arcanine listing that writes 'evolves from Growlithe #58' would match, but none appear in live data. Vintage PSA 8/9 & CGC 9 slabs bucket other_graded and won't alert (raw + PSA10/BGS10/BGS9.5/CGC10 only).",
       "queries": [
