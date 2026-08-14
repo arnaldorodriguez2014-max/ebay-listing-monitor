@@ -214,6 +214,22 @@
       "max_price": null
     },
     {
+      "name": "Squirtle 007/018 McDonald's Promo (Japanese, 2002 e-Series)",
+      "_note": "Pokemon, Japanese (2002 McDonald's 'Original Minimum Pack' e-Series promo; 18-card set, Squirtle = 007/018, Holo with the sought-after 'swirl'). Identity keys on squirtle + the FULL number '007/018' (norm '007018'): '007' alone is Squirtle's National Dex number and collides with every modern Squirtle (007/165 in 151, Squirtle ex 007, etc.), but the complete 007/018 is unique to this 18-card McDonald's set, and no English/European 007/018 print exists (McDonald's Japan exclusive) so the number also gates language. Rejects modern Squirtle (007/165 -> '007165', lacks '007018'), Base Set 63/102, the sibling McDonald's cards (Charmander 004/018, Wartortle 008/018, Blastoise 009/018), the 2021 English McDonald's 25th-anniversary set, complete-set lots, a Squirtle+Charmander 2-card lot (is_lot), and hand-painted/custom-art proxies (global DEFAULT_EXCLUDE, extended here). Verified offline (FN=0 real, FP=0) and live-scraped (53 real 007/018 matched, 0 FP; the 2-card lot and every non-house grade PSA9/8/6/5, CGC3, TAG/BGS/ARS correctly rejected). Vintage PSA 8/9 & CGC-9 slabs bucket other_graded and won't alert (raw + PSA10/BGS10/BGS9.5/CGC10 only).",
+      "queries": [
+        "squirtle 007/018 mcdonald japanese",
+        "squirtle mcdonalds promo 007/018 e-series 2002",
+        "pokemon squirtle minimum pack 007/018 japanese holo",
+        "ポケモン ゼニガメ マクドナルド 007/018"
+      ],
+      "require": ["squirtle", "007/018"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
+      "_language_note": "language 'any': Japan-only McDonald's promo (no English print), so squirtle + 007/018 already gate identity; _norm strips CJK, matching rides on the Latin tokens (squirtle / 007/018 / mcdonald) sellers include, and 'any' keeps terse listings with no language word (e.g. 'Pokemon Card Squirtle McDonald's Promo 007/018') that 'japanese' would drop.",
+      "language": "any",
+      "min_price": null,
+      "max_price": null
+    },
+    {
       "name": "One Piece 3rd Anniversary Set (English, sealed)",
       "_note": "SEALED PRODUCT (not a single card) — the official 2025 One Piece Card Game English Version 3rd Anniversary Set. First sealed-product watch: uses grades ['ungraded'] (boxes aren't graded) and 'sealed_product': true, which rejects any listing carrying a single-card number (OP13-120, ST01-012, ...) since those are singles pulled from the set, not the box. The is_lot / is_bulk_or_sealed gates stay ON (the plain 'Set' passes them, while lots/bundles/playsets are rejected). require = one piece + 3rd/third anniv + 'set' (excludes 1st/2nd anniversary and singles that say 'card' not 'set'). exclude 'campaign'/'treasure' drops the separate '3rd Anniversary Treasure Campaign Promo Collection' (~$26-80); 'playset' drops multi-single playsets. min_price 500 cuts the cheap no-number singles/accessories (alt-art/leader singles $100-420, deck/storage box, guide book) — the real sealed set is ~$620-2000. language 'english' drops the Japanese version. Live-verified: 161 scraped -> 39 kept, ALL genuine sealed English sets (incl. presale/in-hand/Bandai and titles with ship dates like '8/10'), 0 FP; singles (Sabo OP13-120, Ace OP13-119, Luffy ST01-012 Winner Promo) and the campaign promo collection all rejected. Note: the card-number reject uses the dash-code form only — the Pokemon '232/091' slash form is skipped because it false-matches shipping dates.",
       "queries": [
