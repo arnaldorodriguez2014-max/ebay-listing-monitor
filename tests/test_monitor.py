@@ -75,6 +75,15 @@ check("PSA-10 hyphen", m.classify_grade("Luffy ST26-005 PSA-10 Gem"), "psa10")
 check("PSA10 no space", m.classify_grade("Luffy ST26-005 PSA10"), "psa10")
 check("BGS-9.5 hyphen", m.classify_grade("Luffy BGS-9.5"), "bgs9.5")
 check("BGS10 no space", m.classify_grade("Luffy BGS10 Pristine"), "bgs10")
+# GLUED mid-grade slabs (grader fused to a single/half digit, no space) must bucket
+# as other_graded, not leak into ungraded. Regression: a bare \b after the company
+# name failed here because "A9" has no letter/digit boundary.
+check("PSA9 glued -> other", m.classify_grade("Lugia ex 031/PLAY PSA9"), "other_graded")
+check("PSA8 glued -> other", m.classify_grade("Charizard Base Set PSA8"), "other_graded")
+check("BGS9 glued -> other", m.classify_grade("Lugia BGS9"), "other_graded")
+check("CGC9 glued -> other", m.classify_grade("Lugia CGC9"), "other_graded")
+check("SGC9 glued -> other", m.classify_grade("Lugia SGC9"), "other_graded")
+check("PSA9.5 glued -> other", m.classify_grade("Lugia PSA9.5"), "other_graded")
 # grade words between "PSA" and "10" must still bucket as psa10 (common on slabs)
 check("PSA GEM MT 10", m.classify_grade("Charizard PSA GEM MT 10 020/073"), "psa10")
 check("PSA Grade 10", m.classify_grade("Celebi V 245/264 PSA Grade 10"), "psa10")

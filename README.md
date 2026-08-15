@@ -40,6 +40,7 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Squirtle 007/018 McDonald's Promo** — **Japanese** 2002 McDonald's "Minimum Pack" e-Series Holo (keyed on `squirtle` + the full `007/018`, since bare `007` is Squirtle's Pokédex number and collides with modern cards like `007/165`)
 - **Psyduck #20 WOTC Black Star Promo** — **English** 2000 Pokémon League promo (`20/53`; excludes the modern Mega Evolution #007 / Detective SM199 Psyduck promos that also say "Black Star", since the year `2025`/`2019` supplies a stray "20")
 - **Lugia 9/111 Neo Genesis** — **English** 2000 WOTC Holo Rare (the set's chase card; keyed on `lugia` + `neo genesis`, since `9/111`→`9111` collides with every `X9/111` card and is redundant)
+- **Lugia ex 031/PLAY** — **Japanese** 2006 "Players" club 4th-season subscription promo (the *ex*-mechanic Lugia; keyed on `031/PLAY` + Players-Club/4th-Season phrases, never bare `031` or `ex`; excludes the stray-`031` Lugia confusables — Unseen Forces `105/115`, Silver Tempest `186/195`, etc.)
 
 > Vintage grade note: for the older Rayquaza cards (3/17, 123/124), graded copies are
 > commonly **PSA 8/9**, which the house grade buckets treat as "other" and don't alert

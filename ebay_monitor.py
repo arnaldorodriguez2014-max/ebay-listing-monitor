@@ -190,8 +190,13 @@ _BGS10 = re.compile(r"\b(?:BGS|BECKETT)" + _SEP + _BGS_LABEL + r"10\b")
 _CGC_LABEL = r"(?:(?:GEM|MINT|MT|GM|PRISTINE|PERFECT)" + _SEP + r")*"
 _CGC10 = re.compile(r"\bCGC" + _SEP + _CGC_LABEL + r"10\b")
 # "is this graded at all?" — an unambiguous company token anywhere in the title.
+# Trailing (?=\d|\b) — not a bare \b — so a grade digit GLUED to the company
+# ("PSA9", "BGS9", "CGC9") still counts as a slab. A plain \b fails there because
+# "A9" has no word boundary between letter and digit, silently leaking glued
+# mid-grade slabs into 'ungraded'. (PSA10 is caught earlier by _PSA10; the "10"
+# grades never reach here. ACE/TAG/ARS stay in _GRADED_NUM, which needs a digit.)
 _GRADED_HINT = re.compile(
-    r"\b(?:" + "|".join(GRADING_COMPANIES) + r")\b", re.IGNORECASE
+    r"\b(?:" + "|".join(GRADING_COMPANIES) + r")(?=\d|\b)", re.IGNORECASE
 )
 # ACE, TAG and ARS are real third-party graders but collide with the character
 # "Ace", the word "tag", and common letters, so only count them as graders when

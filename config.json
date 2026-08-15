@@ -307,6 +307,27 @@
       "language": "english",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "Lugia ex 031/PLAY — 4th Season Players Club Promo (Japanese, 2006)",
+      "_note": "Pokemon, Japanese (2006 PCG-P 'PLAY Promos' — the 4th-season Pokemon Card Game 'Players' club subscription-kit gift, ~Mar 2006). This IS the 'Lugia ex' card (the lowercase-ex game mechanic), number 031/PLAY — so 'EX-HOLO' in seller titles means the ex card + holofoil, NOT a condition, and the matcher deliberately does NOT key on 'ex' (which collides with condition-grade EX, the set 'EX Unseen Forces', and Lugia-EX/GX/V). Sig A ['lugia', 031play|31play] rides the official set code 031/PLAY (norm '031play'; also the leading-zero-dropped '31/PLAY'). Sig B ['lugia', players club|players kit|4th season subscription] catches no-number and PSA-slab-label forms via promo-unique phrases. Sig C ['lugia','031', 4th season|pcgp] catches terse 'PCG-P 031' / '4th Season Play ... 031' forms. Bare '031' is NEVER used alone (Lugia's set number, but it collides with stray price/cert digits). exclude = competing Lugia set-numbers whose stray '031' (in a price/cert) could otherwise leak them in: Unseen Forces 105/115, Golden Sky Silvery Ocean 090/106, Prismatic 082/131, Silver Tempest 186/195, Plasma Gale 074/070, WC 047/L-P, S&M 237/SM-P, and the Pikachu Victory-Medal 031/L-P. Designed + adversarially verified via a 7-agent workflow, then re-verified against live code: offline battery FN=0/FP=0 across 13 target forms + 20 confusables (incl. a contrived 'Players Club $10.31' Unseen Forces and a Silver Tempest alt-art via cert '031'), and a live scrape (193 distinct -> 23 accepted, all genuine 031/PLAY, 0 FP). Heavy graded inventory is PSA 9 / PSA 8 / ARS 10 -> other_graded, dropped BY DESIGN (raw + PSA10/BGS10/BGS9.5/CGC10 only). Documented edge: a genuine 2-card 'Lugia 031/PLAY + Ho-oh 030' Players-set listing is accepted (contains the target; is_lot can't flag it since '030' carries no denominator).",
+      "queries": [
+        "lugia ex 031/play 4th season players club japanese",
+        "lugia 4th season subscription promo japanese 2006",
+        "pokemon lugia ex 031/play players club promo",
+        "ルギアex 031/PLAY プレイヤーズ 2006"
+      ],
+      "match_any": [
+        ["lugia", ["031play", "31play"]],
+        ["lugia", ["playersclub", "playerskit", "4thseasonsubscription"]],
+        ["lugia", "031", ["4thseason", "pcgp"]]
+      ],
+      "exclude": ["105/115", "090/106", "082/131", "186/195", "074/070", "047/L-P", "237/SM-P", "031/L-P"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
+      "_language_note": "language 'any': Japan-only Players Club promo (no English print), so the 031/PLAY code + Players-Club/4th-Season phrases already gate identity; _norm strips CJK so matching rides on the Latin lugia/031play/players tokens sellers include, and 'any' keeps terse listings that a 'japanese' filter would drop as 'unknown'.",
+      "language": "any",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }
