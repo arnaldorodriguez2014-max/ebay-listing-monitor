@@ -39,9 +39,13 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Karen's Umbreon 091/141** — 2001 **Japanese** Pokémon Card VS, Holo (1st Ed / Unlimited; not the 232/091 Mew or the adjacent Karen's siblings)
 - **Growlithe #058 Vending Series 3** — **Japanese** 1998 Vending Machine promo, glossy (keyed on `growlithe` + `vending` + Series 3; the `58` is just Growlithe's Pokédex number)
 - **Squirtle 007/018 McDonald's Promo** — **Japanese** 2002 McDonald's "Minimum Pack" e-Series Holo (keyed on `squirtle` + the full `007/018`, since bare `007` is Squirtle's Pokédex number and collides with modern cards like `007/165`)
+- **Squirtle 132/165 Expedition** — **English** 2002 WOTC Expedition Base Set (e-Card) Common (keyed on `132/165`, with an `expedition`+`132` fallback for the terse `#132` slab form; rejects the `131/165` typo and foreign prints)
+- **Squirtle No.007 Squirtle Deck** — **Japanese** 1999 Intro Pack "Squirtle Deck" (VHS); tracks **all four** Squirtle variants (#16/#18/#37/#40, all `No.007`) via `squirtle` + the deck-name gate + `007` (the deck positions are collision-prone, so the shared dex number is the anchor)
+- **Wartortle No.008 Squirtle Deck** — **Japanese** 1999 Intro Pack "Squirtle Deck"; tracks **both** Wartortle variants (#3/#10) via `wartortle` + the deck-name gate (excludes `007` so Squirtle+Wartortle combo listings fire neither watch)
 - **Psyduck #20 WOTC Black Star Promo** — **English** 2000 Pokémon League promo (`20/53`; excludes the modern Mega Evolution #007 / Detective SM199 Psyduck promos that also say "Black Star", since the year `2025`/`2019` supplies a stray "20")
 - **Lugia 9/111 Neo Genesis** — **English** 2000 WOTC Holo Rare (the set's chase card; keyed on `lugia` + `neo genesis`, since `9/111`→`9111` collides with every `X9/111` card and is redundant)
 - **Lugia ex 031/PLAY** — **Japanese** 2006 "Players" club 4th-season subscription promo (the *ex*-mechanic Lugia; keyed on `031/PLAY` + Players-Club/4th-Season phrases, never bare `031` or `ex`; excludes the stray-`031` Lugia confusables — Unseen Forces `105/115`, Silver Tempest `186/195`, etc.)
+- **Light Arcanine No.059 Neo Destiny** — **Japanese** 2001 Holo Rare (keyed on the contiguous `light arcanine` + `059`; bare `light` would collide with "lightly played", and `059` selects the Japanese print over the English `26/105`)
 
 > Vintage grade note: for the older Rayquaza cards (3/17, 123/124), graded copies are
 > commonly **PSA 8/9**, which the house grade buckets treat as "other" and don't alert

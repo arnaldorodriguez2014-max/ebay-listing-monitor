@@ -339,10 +339,78 @@
         "oshawott 105 white flare holo"
       ],
       "require": ["oshawott", "105/086"],
-      "exclude": ["german", "french", "italian", "spanish", "portuguese", "dutch", "liga", "ligue"],
+      "exclude": ["german", "french", "italian", "spanish", "portuguese", "dutch", "deutsch", "espanol", "francais", "nederlands", "portugues", "italiano", "liga", "ligue"],
       "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
       "_language_note": "language 'english' + foreign-word excludes: the 105/086 collector number is shared across White Flare's Western-language prints (EN/DE/FR/IT/ES/PT), so the language markers scope this to English while terse English listings (no language word -> 'unknown') are kept; 'english' additionally drops the Japanese White Flare (CJK).",
       "language": "english",
+      "min_price": null,
+      "max_price": null
+    },
+    {
+      "name": "Squirtle 132/165 Expedition Base Set (English, 2002)",
+      "_note": "Pokemon, English (2002 WOTC Expedition Base Set — the first e-Card/e-Reader set). Squirtle 132/165, Common. Sig A ['squirtle','132/165'] is the primary anchor (norm '132165', unique to this card). Sig B ['squirtle','expedition','132'] rescues the terse '#132'-only PSA-slab form (where /165 is dropped), gated by 'expedition' + 'squirtle' so bare '132' can't leak. Rejects the common '131/165' seller typo (we key on the correct 132), other /165 cards (Bulbasaur 94/165), the McDonald's Squirtle 007/018, the Japanese Squirtle Deck, and multi-card /165 lots (is_lot). English WOTC prints share 132/165 across EU languages, so language 'english' + exonym excludes (German/Deutsch, French/Francais, Italian/Italiano, Spanish/Espanol, Dutch/Nederlands, Portuguese/Portugues, Liga/Ligue) scope to English. Verified offline FN=0/FP=0 (incl. Deutsch/Espanol rejects) and live-scraped. KNOWN residual: a listing whose ONLY foreign signal is a flag emoji (stripped by _norm) isn't catchable — rare. Vintage PSA 8/9 & CGC 9 -> other_graded, won't alert (raw + PSA10/BGS10/BGS9.5/CGC10 only).",
+      "queries": [
+        "squirtle 132/165 expedition base set",
+        "pokemon expedition squirtle 132 e-reader 2002",
+        "squirtle expedition 132/165 holo english",
+        "squirtle 132 e-card expedition"
+      ],
+      "match_any": [["squirtle", "132/165"], ["squirtle", "expedition", "132"]],
+      "exclude": ["german", "french", "italian", "spanish", "portuguese", "dutch", "deutsch", "espanol", "francais", "nederlands", "portugues", "italiano", "liga", "ligue"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
+      "_language_note": "language 'english' + foreign-word/exonym excludes: the 132/165 collector number is shared across Expedition's Western-language prints, so the markers scope to English while terse English listings (no language word -> 'unknown') are kept; 'english' also drops any CJK.",
+      "language": "english",
+      "min_price": null,
+      "max_price": null
+    },
+    {
+      "name": "Squirtle No.007 — 1999 Japanese Squirtle Deck / Intro Pack (Japanese)",
+      "_note": "Pokemon, Japanese (1999 Intro Pack 'Squirtle Deck' / Zenigame deck — the Squirtle half; often titled 'VHS Intro Pack', it shipped with an instructional VHS). The deck holds FOUR different Squirtle cards (deck positions #16/#18/#37/#40, all printed 'No.007', different reprint artwork) — this watch tracks ALL of them (per the user's all-variants choice). Identity: 'squirtle' + set gate ['squirtle deck','intro pack','intro deck','vhs'] + dex ['007','no007']. Why NOT the deck position: 'squirtle' is the SET name (on every card in the deck), and bare positions 16/18/37/40 collide with stray digits (a live 'Fire Energy ... POP 18' leaked in) — so the reliable anchor is 'No.007' (printed on all 4 Squirtle, present in ~every real title), not the position. exclude ['wartortle','blastoise','venusaur'] drops same-deck siblings and is MANDATORY for cross-watch (norm 'squirtledeck' contains 'squirtle', so a Wartortle listing would otherwise satisfy the 'squirtle' clause). Mutually exclusive with the McDonald's 007/018 watch (Intro-Pack 'No.007' norms to '007'/'00718', never the contiguous '007018') and Expedition 132/165. Designed via 7-agent workflow (all-variants scope), verified offline FN=0/FP=0 (Fire-Energy leak closed) and live-scraped (180 distinct -> 28 accepted, all genuine deck Squirtle #16/#18/#40, 0 sibling leak, 0 recall miss). Vintage PSA 8/9 -> other_graded (raw + top grades only). Edge: a rare listing printing only a position number and NOT 'No.007' would be missed.",
+      "queries": [
+        "squirtle no.007 intro pack squirtle deck japanese",
+        "1999 pokemon japanese squirtle deck squirtle 007",
+        "squirtle deck vhs intro pack squirtle 1999",
+        "ゼニガメ イントロパック 007 squirtle deck"
+      ],
+      "require": ["squirtle", ["squirtle deck", "intro pack", "intro deck", "vhs"], ["007", "no007"]],
+      "exclude": ["wartortle", "blastoise", "venusaur"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
+      "_language_note": "language 'any': Japan-only Intro Pack card (no English print); _norm strips CJK so matching rides on the Latin tokens (squirtle / squirtle deck / intro pack / 007) sellers include, and 'any' keeps terse listings a 'japanese' filter would drop.",
+      "language": "any",
+      "min_price": null,
+      "max_price": null
+    },
+    {
+      "name": "Wartortle No.008 — 1999 Japanese Squirtle Deck / Intro Pack (Japanese)",
+      "_note": "Pokemon, Japanese (1999 Intro Pack 'Squirtle Deck' / VHS promo — the Squirtle half). Two Wartortle variants exist (deck positions #3 and #10, both 'No.008') — this watch tracks BOTH (per the user's all-variants choice). Identity: 'wartortle' (NOT the set name, so it appears only on the Wartortle card) + set gate ['squirtle deck','intro pack','intro deck','vhs']. No number needed — wartortle + the deck gate is unique. exclude ['007'] drops the 2-card 'Squirtle 007 + Wartortle 008' combo listings so they fire NEITHER this nor the Deck-Squirtle watch. Separates from the Base Set / Expansion Pack / Team Rocket Wartortle (also No.008, but they never say 'Squirtle Deck'/'Intro Pack'/'VHS'). Verified offline FN=0/FP=0 and live-scraped (147 distinct -> 38 accepted, all genuine deck Wartortle #3/#10; the Squirtle+Wartortle combo correctly dropped). Vintage PSA 8/9 -> other_graded (raw + top grades only). Documented residual: a listing abbreviating 'Squirtle Deck' to bare 'Squirtle' (e.g. 'Squirtle #3 Wartortle') fails the set gate (~1/24 of titles; adding bare 'squirtle' would over-match every Squirtle-mentioning Wartortle).",
+      "queries": [
+        "wartortle no.008 squirtle deck intro pack japanese",
+        "1999 pokemon japanese squirtle deck wartortle",
+        "wartortle squirtle deck vhs intro pack 008",
+        "カメール イントロパック ゼニガメデッキ"
+      ],
+      "require": ["wartortle", ["squirtle deck", "intro pack", "intro deck", "vhs"]],
+      "exclude": ["007"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
+      "_language_note": "language 'any': Japan-only Intro Pack card (no English print); _norm strips CJK so matching rides on the Latin tokens (wartortle / squirtle deck / intro pack) sellers include, and 'any' keeps terse listings a 'japanese' filter would drop.",
+      "language": "any",
+      "min_price": null,
+      "max_price": null
+    },
+    {
+      "name": "Light Arcanine No.059 — Neo Destiny (Japanese, 2001)",
+      "_note": "Pokemon, Japanese (2001 Neo Destiny / 'Darkness, and to Light...' / Neo 4, Holo Rare, illus. Atsuko Nishida). Light Arcanine, No.059 (059 = Arcanine's National Dex number, printed on the card). Identity: the contiguous 'light arcanine' + '059'. 'light arcanine' is required as ONE token (norm 'lightarcanine'), NOT bare 'light' — bare 'light' collides with 'Lightly Played'/'Light Play' condition notes. There is ALSO an English Light Arcanine (Neo Destiny 26/105); requiring '059' selects the Japanese print (English is 26/105, has no '059'), and exclude '26/105' backstops the rare English listing carrying a stray '059' (e.g. a $0.59 price). Rejects Dark Arcanine (Team Rocket, also dex 059), other Light Pokemon (Light Dragonite), base Arcanine, and lightly-played non-Light Arcanine. Verified offline FN=0/FP=0 and live-scraped (148 distinct -> 47 accepted, all genuine Japanese No.059, 0 English leak; even a mislabeled 'Neo Discovery' listing that is really the No.059 card is caught). Vintage PSA 8/9 & CGC 9 -> other_graded, won't alert (raw + PSA10/BGS10/BGS9.5/CGC10 only).",
+      "queries": [
+        "light arcanine 059 neo destiny japanese",
+        "light arcanine no.059 holo japanese 2001",
+        "pokemon japanese light arcanine neo destiny holo rare",
+        "light arcanine 059 darkness and to light"
+      ],
+      "require": ["light arcanine", "059"],
+      "exclude": ["26/105"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
+      "_language_note": "language 'any': Japan-only Neo Destiny print (the English Light Arcanine is 26/105, excluded by the '059' anchor + the 26/105 exclude); _norm strips CJK so matching rides on 'light arcanine' + '059', and 'any' keeps terse listings a 'japanese' filter would drop.",
+      "language": "any",
       "min_price": null,
       "max_price": null
     }
