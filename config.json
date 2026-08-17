@@ -328,6 +328,23 @@
       "language": "any",
       "min_price": null,
       "max_price": null
+    },
+    {
+      "name": "Oshawott 105/086 — SV White Flare Illustration Rare (English, 2025)",
+      "_note": "Pokemon, English (2025 Scarlet & Violet 'White Flare', SV11W). Oshawott Illustration Rare, secret-numbered 105/086 (105 > the 86-card base = an IR beyond the set size). Identify by oshawott + the FULL number '105/086' (norm '105086'): bare '105' is hugely collision-prone, but 105/086 is unique to this card — verified live that no Black Bolt (the paired sister set) or other-set Oshawott carries 105/086 (0 of 140 scraped mentioned Black Bolt; Oshawott is a White Flare card), so NO set-name token is required and terse 'Oshawott 105/086' / 'Oshawott [WHT - 105/086]' listings still match. Rejects the base Oshawott (lower number), sibling IRs (Dewott 106/086), same-number other-Pokemon (Samurott 105/086), other-set Oshawott (Journey Together 105/159, Paldea 105/091), and multi-card lots (is_lot on 105/086 + 106/086). English SV sets share collector numbers across EU languages, so language 'english' + german/french/etc. excludes scope to the English print (the Espeon/Lugia precedent). Verified offline (FN=0, FP=0 — the one battery 'FP' was a non-existent Black Bolt Oshawott) and live-scraped (140 distinct -> 69 accepted, all genuine White Flare 105/086, 0 FP, terse/WHT-abbreviated forms caught). PSA 9 / CGC 9 slabs -> other_graded, won't alert (raw + PSA10/BGS10/BGS9.5/CGC10 only).",
+      "queries": [
+        "oshawott 105/086 white flare illustration rare",
+        "pokemon oshawott 105/086 sv white flare",
+        "oshawott white flare IR 105/086 english",
+        "oshawott 105 white flare holo"
+      ],
+      "require": ["oshawott", "105/086"],
+      "exclude": ["german", "french", "italian", "spanish", "portuguese", "dutch", "liga", "ligue"],
+      "grades": ["ungraded", "psa10", "bgs10", "bgs9.5", "cgc10"],
+      "_language_note": "language 'english' + foreign-word excludes: the 105/086 collector number is shared across White Flare's Western-language prints (EN/DE/FR/IT/ES/PT), so the language markers scope this to English while terse English listings (no language word -> 'unknown') are kept; 'english' additionally drops the Japanese White Flare (CJK).",
+      "language": "english",
+      "min_price": null,
+      "max_price": null
     }
   ]
 }

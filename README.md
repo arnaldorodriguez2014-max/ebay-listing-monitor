@@ -33,6 +33,7 @@ card game). Currently watching (English unless noted; grades: ungraded / PSA 10 
 - **Rayquaza V 194/203** — Evolving Skies alternate full art (not the VMAX alt art 218/203)
 - **Rayquaza 3/17** — POP Series 1 (2004) Cosmos Holo Rare (holo only; non-holo excluded)
 - **Rayquaza EX 123/124** — Dragons Exalted (2012) Full Art Ultra Rare (not the regular 85/124)
+- **Oshawott 105/086** — **English** SV White Flare (2025) Illustration Rare (keyed on the secret-numbered `105/086`; verified no Black Bolt / other-set Oshawott shares it, so terse listings match too)
 - **Espeon No.196** — **Japanese** Neo Discovery ("Crossing the Ruins") Holo Rare (not Neo Destiny "Dark Espeon" No.196, nor the non-holo Premium File promo)
 - **Espeon 1/75** — **English** Neo Discovery (2001 WOTC) Holo Rare (the English counterpart of No.196; German/French/Italian prints share 1/75 and are excluded)
 - **Karen's Umbreon 091/141** — 2001 **Japanese** Pokémon Card VS, Holo (1st Ed / Unlimited; not the 232/091 Mew or the adjacent Karen's siblings)
